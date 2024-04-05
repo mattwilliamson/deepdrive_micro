@@ -29,7 +29,7 @@ make -j4
 ```json
 {
     "cmake.environment": {
-        "PICO_SDK_PATH":"../../pico-sdk"
+        "PICO_SDK_PATH":"${env:PICO_SDK_PATH}"
     },
      "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }

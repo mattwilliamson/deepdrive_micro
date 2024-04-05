@@ -10,14 +10,14 @@ Interfaces:
 - LIDAR?
 
 ```sh
-git submodule update --init
-cd pico-sdk
-git submodule update --init
+git submodule update --init --recursive
 ```
 
 ## Mount RPI Pico
 
 *Hold boot button when plugging in*
+
+**TODO: probably can use `picotool` to make this easier**
 
 ```sh
 sudo mkdir /mnt/sda1
@@ -45,7 +45,8 @@ sudo cp src/deepdrive_micro/deepdrive_micro.uf2 /mnt/sda1
 
 ## Run micro ros Agent
 ```sh
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 baudrate=115200
+mamba activate ros_env
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
 
 ros2 topic echo deepdrive_micro_publisher
 ```
