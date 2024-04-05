@@ -2,34 +2,189 @@
 
 #include "config.h"
 
-#include <stdio.h>
+#include <cstdint>
+#include <cstdio>
 #include <stdlib.h>
+#include <vector>
+#include <array>
 
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
-#include "state.h"
+#include "pico/multicore.h"
+#include "status.h"
 #include "ws2812.pio.h"
 
-void led_ring_init();
 
-static inline void led_ring_put_pixel(uint32_t pixel_grb);
-static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b);
-static inline uint32_t urgb_u32_g(uint8_t r, uint8_t g, uint8_t b);
-static inline uint8_t min(uint8_t x, uint8_t y);
-static inline uint8_t gamma_u8(uint8_t x);
-static inline uint8_t sine(uint8_t x);
+/**
+ * @class LEDRing
+ * @brief Represents an LED ring with various animation patterns and color fading capabilities.
+ *
+ * The LEDRing class provides methods to control an LED ring connected to a specific GPIO pin.
+ * It supports rendering different animation patterns, such as snakes, random colors, sparkle, and greyscale.
+ * Additionally, it allows fading the LED colors and resetting the animation.
+ */
+/**
+ * @brief Class representing an LED ring.
+ */
+class LEDRing {
+public:
+    /**
+     * @brief Constructor for the LEDRing class.
+     * @param pin The GPIO pin the LED ring is connected to.
+     * @param pio The status machine PIO instance.
+     * @param ledCount The number of LEDs in the ring.
+     */
+    LEDRing(uint8_t pin, PIO pio, uint8_t ledCount);
 
-void led_ring_pattern_snakes(uint len, uint t);
-void led_ring_pattern_random(uint len, uint t);
-void led_ring_pattern_sparkle(uint len, uint t);
-void led_ring_pattern_greys(uint len, uint t);
+    /**
+     * @brief Starts the LED ring.
+     */
+    void start();
 
-void led_ring_fill(uint8_t r, uint8_t g, uint8_t b);
+    /**
+     * @brief Renders the LED ring based on the given status.
+     * @param status The status to renderStatus.
+     */
+    void renderStatus(Status status);
 
-void led_ring_fade(uint8_t r, uint8_t g, uint8_t b, uint8_t t);
-void led_ring_spin(uint8_t r, uint8_t g, uint8_t b, uint t);
-void led_ring_render(state_t status);
+    /**
+     * @brief Renders the LED ring with the current internal state of LEDs
+     */
+    void render();
+
+    /**
+     * @brief Generates a snake pattern animation on the LED ring.
+     * @param len The length of the snake.
+     * @param t The time variable for the animation.
+     */
+    void patternSnakes(uint t);
+
+    /**
+     * @brief Generates a random pattern animation on the LED ring.
+     * @param t The time variable for the animation.
+     */
+    void patternRandom(uint t);
+
+    /**
+     * @brief Generates a sparkle pattern animation on the LED ring.
+     * @param t The time variable for the animation.
+     */
+    void patternSparkle(uint t);
+
+    /**
+     * @brief Generates a greyscale pattern animation on the LED ring.
+     * @param t The time variable for the animation.
+     */
+    void patternGreys(uint t);
+
+    /**
+     * @brief Fades the LED ring to the specified RGB color over time.
+     * @param r The red component of the color.
+     * @param g The green component of the color.
+     * @param b The blue component of the color.
+     * @param t The time variable for the fade animation.
+     */
+    void fade(uint8_t r, uint8_t g, uint8_t b, uint8_t t);
+
+    /**
+     * @brief Fades the red component of the LED ring to the specified value over time.
+     * @param r The red component to fade to.
+     * @param t The time variable for the fade animation.
+     */
+    void fadeR(uint8_t r, uint8_t t);
+
+    /**
+     * @brief Fades the white component of the LED ring to the specified value over time.
+     * @param w The white component to fade to.
+     * @param t The time variable for the fade animation.
+     */
+    void fadeW(uint8_t w, uint8_t t);
+
+    /**
+     * @brief Resets the animation of the LED ring.
+     */
+    void resetAnimation();
+
+private:
+    /**
+     * @brief Converts RGB color components to a 32-bit unsigned integer.
+     * @param r The red component of the color.
+     * @param g The green component of the color.
+     * @param b The blue component of the color.
+     * @return The 32-bit unsigned integer representation of the color.
+     */
+    static uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b);
+
+    /**
+     * @brief Converts RGB color components to a 32-bit unsigned integer with gamma correction.
+     * @param r The red component of the color.
+     * @param g The green component of the color.
+     * @param b The blue component of the color.
+     * @return The 32-bit unsigned integer representation of the color with gamma correction.
+     */
+    static uint32_t urgb_u32_g(uint8_t r, uint8_t g, uint8_t b);
+
+    /**
+     * @brief Sets the color of a single LED in the ring.
+     * @param pixel_grb The color of the LED in GRB format.
+     */
+    void putPixel(uint32_t pixel_grb);
+
+    /**
+     * @brief Fills the entire LED ring with the specified color.
+     * @param r The red component of the color.
+     * @param g The green component of the color.
+     * @param b The blue component of the color.
+     */
+    void fill(uint8_t r, uint8_t g, uint8_t b);
+
+    /**
+     * @brief Spins the LED ring with the specified color and time.
+     * @param r The red component of the color.
+     * @param g The green component of the color.
+     * @param b The blue component of the color.
+     * @param t The time variable for the animation.
+     */
+    void spin(uint8_t r, uint8_t g, uint8_t b, uint t);
+
+    /**
+     * @brief Rolls the LED ring with the specified color and time.
+     * @param r The red component of the color.
+     * @param g The green component of the color.
+     * @param b The blue component of the color.
+     * @param t The time variable for the animation.
+     */
+    void roll(uint8_t r, uint8_t g, uint8_t b, uint t);
+
+    /**
+     * @brief Applies gamma correction to a given value.
+     * @param x The value to apply gamma correction to.
+     * @return The gamma corrected value.
+     */
+    static uint8_t gamma_u8(uint8_t x);
+
+    /**
+     * @brief Calculates the sine of a given value.
+     * @param x The value to calculate the sine of.
+     * @return The sine of the value.
+     */
+    static uint8_t sine(uint8_t x);
+
+    /**
+     * @brief Adds two unsigned 8-bit integers with a maximum value of 255.
+     * @param x The first value to add.
+     * @param y The second value to add.
+     * @return The sum of the two values, capped at 255.
+     */
+    static uint8_t add_u8_max(uint8_t x, uint8_t y);
+    
+    uint8_t pin;                                   // Which GPIO pin the LED ring is connected to
+    PIO pio;                                       // The status machine PIO instance
+    uint8_t ledCount;                              // How many LEDs are in the ring
+    uint8_t t;                                     // Time variable for animations
+    std::vector<std::array<uint8_t, 3>> rgbValues; // RGB values for each LED
+};
 
 // Tables Snagged from 
 // https://github.com/adafruit/Adafruit_NeoPixel/blob/master/Adafruit_NeoPixel.h

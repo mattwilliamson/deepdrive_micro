@@ -1,5 +1,8 @@
 #pragma once
 
+// Comment out to disable
+// #define WATCHDOG_ENABLED 1
+
 // START micro-ros
 // ----------------------------------
 
@@ -30,14 +33,18 @@
 // GPIO 22
 
 #ifdef PICO_DEFAULT_WS2812_PIN
-#define WS2812_PIN PICO_DEFAULT_WS2812_PIN
+#define LED_RING_PIN PICO_DEFAULT_WS2812_PIN
 #else
-#define WS2812_PIN 22
+#define LED_RING_PIN 22
 #endif
-
 
 #define LED_RING_IS_RGBW false
 #define LED_RING_NUM_PIXELS 12
+
+#define LED_RING_PIO pio0
+
+#define LED_RING_DELAY_MS 10
+// #define LED_RING_DELAY_MS 100
 
 // END LED RING
 // ----------------------------------

@@ -1,25 +1,4 @@
-#include <stdint.h>
-#include <stdio.h>
-
-// Error codes can be found in
-// micro_ros_raspberrypi_pico_sdk/libmicroros/include/rcl/types.h
-// and micro_ros_raspberrypi_pico_sdk/libmicroros/include/rmw/ret_types.h
-#include <rcl/error_handling.h>
-#include <rcl/rcl.h>
-#include <rclc/executor.h>
-#include <rclc/rclc.h>
-#include <rmw_microros/rmw_microros.h>
-#include <std_msgs/msg/int32.h>
-
-#include "hardware/pwm.h"
-#include "pico/stdlib.h"
-#include "pico_uart_transports.h"
-#include "pico/multicore.h"
-
-#include "config.h"
-#include "state.h"
-#include "led_ring.h"
-#include "led_status.h"
+#include "main.h"
 
 const uint PIN_MOTOR_A = 0;
 const uint PIN_MOTOR_B = 1;
@@ -37,23 +16,31 @@ std_msgs__msg__Int32 msg;
 rcl_subscription_t subscriber;
 std_msgs__msg__Int32 cmd;
 
+LEDRing ledRing = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
+StatusManager& status = StatusManager::getInstance();
+
 
 void core1_entry() {
   // Run the led ring animation loop on the other core in parallel
   // multicore_fifo_push_blocking(FLAG_VALUE);
 
-  // Wait for first state push
-  uint32_t g = multicore_fifo_pop_blocking();
+  // Wait for first status push
+  // uint32_t g = multicore_fifo_pop_blocking();
+  // uint32_t g = (uint32_t)Status::Init;
   bool led_on = true;
 
   while (true) {
     led_on = !led_on;
-    led_ring_render((state_t)g);
+    ledRing.renderStatus(status.get());
     led_status_set(led_on);
-    sleep_ms(20);
+    sleep_ms(LED_RING_DELAY_MS);
+    // sleep_ms(100);
 
-    // Wait for next state push
-    multicore_fifo_pop_timeout_us(0, &g);
+    // Wait for next status push
+    // Might not actually need IPC here
+    // if (multicore_fifo_pop_timeout_us(0, &g)) {
+    //   ledRing.resetAnimation();
+    // }
   }
 }
 
@@ -65,7 +52,7 @@ void blink_error() {
   {                                                                            \
     rcl_ret_t temp_rc = fn;                                                    \
     if ((temp_rc != RCL_RET_OK)) {                                             \
-      set_state(STATE_ERROR);                                                  \
+      status.set(Status::Error);                                         \
       sleep_ms(10000);                                                         \
       printf("Failed status on line %d: (error code: %d) Aborting.\n",         \
              __LINE__, (int)temp_rc);                                          \
@@ -76,7 +63,7 @@ void blink_error() {
   {                                                                            \
     rcl_ret_t temp_rc = fn;                                                    \
     if ((temp_rc != RCL_RET_OK)) {                                             \
-      set_state(STATE_ERROR);                                                  \
+      status.set(Status::Error);                                         \
       sleep_ms(10000);                                                         \
       printf("Failed status on line %d: (error code: %d). Continuing.\n",      \
              __LINE__, (int)temp_rc);                                          \
@@ -138,26 +125,39 @@ void subscription_callback(const void *msgin) {
   // Cast received message to used type
   const std_msgs__msg__Int32 *m = (const std_msgs__msg__Int32 *)msgin;
   speed = m->data;
+  status.set(Status::Active);
 }
 
 int main() {
-
+  ledRing.start();
   led_status_init();
-  led_ring_init();
 
   // Parallel processing core
   multicore_launch_core1(core1_entry);
 
-  sleep_ms(2000);
-  set_state(STATE_CONNECTING);
-  sleep_ms(2000);
-  set_state(STATE_ERROR);
-  sleep_ms(2000);
-  set_state(STATE_SUCCESS);
-  sleep_ms(2000);
-  set_state(STATE_ACTIVE);
-  sleep_ms(2000);
-  set_state(STATE_CONNECTING);
+  // sleep_ms(1000);
+  status.set(Status::Connecting);
+  // sleep_ms(25000);
+  // status.set(Status::Error);
+  // sleep_ms(5000);
+  // status.set(Status::Success);
+  // sleep_ms(2000);
+  // status.set(Status::Active);
+  // sleep_ms(2000);
+  // status.set(Status::Connecting);
+
+  #ifdef WATCHDOG_ENABLED
+  // We rebooted because we got stuck or something
+  if (watchdog_caused_reboot()) {
+    // printf("Rebooted by Watchdog!\n");
+    status.setstatus(STATUS_REBOOTED);
+    sleep_ms(10000);
+  }
+
+  // Enable the watchdog, requiring the watchdog to be updated every 100ms or the chip will reboot
+  // second arg is pause on debug which means the watchdog will pause when stepping through code
+  watchdog_enable(1000, false);
+  #endif
 
   // led_status_set(true);
   // sleep_ms(1000);
@@ -204,11 +204,15 @@ int main() {
   executor = rclc_executor_get_zero_initialized_executor();
 
   // Wait for agent successful ping for 2 minutes.
-  const int timeout_ms = UROS_TIMEOUT;
-  const uint8_t attempts = UROS_ATTEMPTS;
-
   // Connect to agent and init node
-  RCCHECK(rmw_uros_ping_agent(timeout_ms, attempts));
+  // Check once and fail quickly if agent is not reachable to show error
+  RCSOFTCHECK(rmw_uros_ping_agent(30, 1));
+
+  // Then retry until agent is reachable and fail hard
+  RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
+
+  status.set(Status::Connected);
+
   RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
   RCCHECK(rclc_node_init_default(&node, "deepdrive_micro_node", "", &support));
 
@@ -238,10 +242,14 @@ int main() {
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &cmd,
                                          &subscription_callback, ON_NEW_DATA));
 
-  // while (true) {
-  //   rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
-  // }
-  rclc_executor_spin(&executor);
+  while (true) {
+    #ifdef WATCHDOG_ENABLED
+    watchdog_update();
+    #endif
+
+    rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
+  }
+  // rclc_executor_spin(&executor);
 
   RCCHECK(rcl_publisher_fini(&publisher, &node));
   RCCHECK(rcl_subscription_fini(&subscriber, &node));
