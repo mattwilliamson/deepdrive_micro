@@ -45,3 +45,26 @@ extern "C" {
 #include "config.h"
 #include "status.h"
 #include "led_ring.h"
+#include "motor.h"
+
+#define RCCHECK(fn)                                                            \
+  {                                                                            \
+    rcl_ret_t temp_rc = fn;                                                    \
+    if ((temp_rc != RCL_RET_OK)) {                                             \
+      status.set(Status::Error);                                         \
+      sleep_ms(10000);                                                         \
+      printf("Failed status on line %d: (error code: %d) Aborting.\n",         \
+             __LINE__, (int)temp_rc);                                          \
+      return 1;                                                                \
+    }                                                                          \
+  }
+#define RCSOFTCHECK(fn)                                                        \
+  {                                                                            \
+    rcl_ret_t temp_rc = fn;                                                    \
+    if ((temp_rc != RCL_RET_OK)) {                                             \
+      status.set(Status::Error);                                         \
+      sleep_ms(10000);                                                         \
+      printf("Failed status on line %d: (error code: %d). Continuing.\n",      \
+             __LINE__, (int)temp_rc);                                          \
+    }                                                                          \
+  }

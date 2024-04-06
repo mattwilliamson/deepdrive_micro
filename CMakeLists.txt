@@ -16,6 +16,7 @@ add_executable(deepdrive_micro
     led_status.c
     servo.c
     status.cpp
+    motor.cpp
 )
 
 # To add to this, here are examples: `cat /usr/src/pico-sdk/test/kitchen_sink/CMakeLists.txt | grep pwm`

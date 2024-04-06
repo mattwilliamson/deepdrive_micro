@@ -54,6 +54,13 @@ public:
     void render();
 
     /**
+     * @brief Turns off all LEDs in the LED ring.
+     */
+    void off() {
+        fill(0, 0, 0);
+    }
+
+    /**
      * @brief Generates a snake pattern animation on the LED ring.
      * @param len The length of the snake.
      * @param t The time variable for the animation.
@@ -106,7 +113,7 @@ public:
      */
     void resetAnimation();
 
-private:
+
     /**
      * @brief Converts RGB color components to a 32-bit unsigned integer.
      * @param r The red component of the color.
@@ -156,6 +163,8 @@ private:
      * @param t The time variable for the animation.
      */
     void roll(uint8_t r, uint8_t g, uint8_t b, uint t);
+
+private:
 
     /**
      * @brief Applies gamma correction to a given value.

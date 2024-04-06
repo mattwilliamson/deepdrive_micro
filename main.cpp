@@ -29,6 +29,11 @@ void core1_entry() {
   // uint32_t g = (uint32_t)Status::Init;
   bool led_on = true;
 
+  #ifndef LED_RING_ENABLED
+  ledRing.off();
+  return;
+  #endif
+
   while (true) {
     led_on = !led_on;
     ledRing.renderStatus(status.get());
@@ -48,27 +53,6 @@ void blink_error() {
   led_status_blink(1000, 300, 100);
 }
 
-#define RCCHECK(fn)                                                            \
-  {                                                                            \
-    rcl_ret_t temp_rc = fn;                                                    \
-    if ((temp_rc != RCL_RET_OK)) {                                             \
-      status.set(Status::Error);                                         \
-      sleep_ms(10000);                                                         \
-      printf("Failed status on line %d: (error code: %d) Aborting.\n",         \
-             __LINE__, (int)temp_rc);                                          \
-      return 1;                                                                \
-    }                                                                          \
-  }
-#define RCSOFTCHECK(fn)                                                        \
-  {                                                                            \
-    rcl_ret_t temp_rc = fn;                                                    \
-    if ((temp_rc != RCL_RET_OK)) {                                             \
-      status.set(Status::Error);                                         \
-      sleep_ms(10000);                                                         \
-      printf("Failed status on line %d: (error code: %d). Continuing.\n",      \
-             __LINE__, (int)temp_rc);                                          \
-    }                                                                          \
-  }
 
 // Pulse counter
 void gpio_callback(uint gpio, uint32_t events) { pulses++; }
@@ -132,6 +116,49 @@ int main() {
   ledRing.start();
   led_status_init();
 
+  // Add a Motor instance for all 4 motors PIN_MOTOR_FRONT_LEFT and so on
+  std::vector<Motor> motors;
+  motors.emplace_back(PIN_MOTOR_FRONT_LEFT);
+  motors.emplace_back(PIN_MOTOR_FRONT_RIGHT);
+  motors.emplace_back(PIN_MOTOR_BACK_LEFT);
+  motors.emplace_back(PIN_MOTOR_BACK_RIGHT);
+
+  // Wait for motors to start
+  sleep_ms(1000);
+
+  for (int i = 0; i <= 32000; i+=10) {
+    for (auto& motor : motors) {
+      motor.setSpeed(i);
+    }
+    ledRing.fill(0, 0, i>>8);
+    sleep_ms(1);
+  }
+
+  for (int i = 32000; i >= 0 ; i-=10) {
+      for (auto& motor : motors) {
+        motor.setSpeed(i); 
+      }
+      ledRing.fill(0, 0, i>>8);
+      sleep_ms(1);
+  }
+
+  for (int i = 0; i >= -32000; i-=10) {
+    for (auto& motor : motors) {
+      motor.setSpeed(i);
+    }
+    ledRing.fill(i>>8, 0, 0);
+    sleep_ms(1);
+  }
+
+  for (int i = -32000; i <= 0 ; i+=10) {
+      for (auto& motor : motors) {
+        motor.setSpeed(i); 
+      }
+      ledRing.fill(i>>8, 0, 0);
+      sleep_ms(1);
+  }
+
+  sleep_ms(100000);
   // Parallel processing core
   multicore_launch_core1(core1_entry);
 
