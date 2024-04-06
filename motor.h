@@ -1,11 +1,19 @@
 #pragma once
 
+#include "config.h"
 #include <limits>
+#include <map>
 
 extern "C" {
     #include "hardware/pwm.h"
     #include "pico/stdlib.h"
 }
+
+// Keep the intermediate pulse counts until the next read from the map
+static bool gpio_callbacks_configured = false; // Flag to check if the GPIO callbacks are configured
+
+// TODO: Prune this down to use less memory, an array is fast for now
+static volatile int pulse_count_map[30] = {}; // Map of pin number to pulse count
 
 // Got some help from https://cocode.se/linux/raspberry/pwm.html
 
@@ -35,8 +43,9 @@ public:
     /**
      * @brief Constructor for Motor class.
      * @param pin The pin number to which the motor is connected.
+     * @param encoderPin The pin number to which the motor encoder is connected.
      */
-    Motor(int pin);
+    Motor(int pin, int encoderPin);
 
     /**
      * @brief Stop the motor.
@@ -86,9 +95,25 @@ public:
      */
     void setSpeed(int16_t speed);
 
+    /**
+     * @brief Increment the pulse count.
+     *
+     * The pulses are accumulated in the background as an IRQ.
+     * When we read the pulses or change the speed, we read how many were accumulated and reset them.
+     */
+    void readPulses();
+
+    /**
+     * @brief Get the number of pulses counted by the motor.
+     * @return The number of pulses counted by the motor.
+     */
+    int getPulses();
+
 private:
-    int m_pin;      // Pin number of the motor
+    int m_pin;          // Pin number of the motor
+    int m_encoderPin;   // Pin number of the motor encoder
     int16_t m_speed;    // Current speed of the motor
-    uint m_slice;   // PWM slice number
-    uint m_channel; // PWM channel number
+    uint m_slice;       // PWM slice number
+    uint m_channel;     // PWM channel number
+    int m_pulses;       // Number of pulses counted by the motor
 };

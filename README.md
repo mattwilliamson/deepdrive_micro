@@ -48,11 +48,18 @@ sudo cp src/deepdrive_micro/deepdrive_micro.uf2 /mnt/sda1
 mamba activate ros_env
 ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
 
-ros2 topic echo deepdrive_micro_publisher
+ros2 topic echo deepdrive_micro/pulses
 ```
 
 ## Publish speed
+Min/Max int16: +/- 32000
+
 ```sh
-ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: 65000}"
+ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: 5000}"
+ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: 0}"
+ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: -5000}"
 ```
 
+TODO: 1000 stops
+2000 is slow
+3000 is a good pace

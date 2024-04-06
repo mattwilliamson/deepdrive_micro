@@ -1,8 +1,8 @@
 #include "main.h"
 
-const uint PIN_MOTOR_A = 0;
-const uint PIN_MOTOR_B = 1;
-const uint PIN_PULSE_A = 2;
+// const uint PIN_MOTOR_A = 0;
+// const uint PIN_MOTOR_B = 1;
+// const uint PIN_PULSE_A = 2;
 uint8_t on = 0;
 int8_t direction = 1;
 uint pulses = 0;
@@ -10,7 +10,7 @@ int speed = 65000;
 const uint max_speed = 65000;
 
 rcl_publisher_t publisher;
-std_msgs__msg__Int32 msg;
+std_msgs__msg__Int32 msgOut;
 
 // Set up subscriber
 rcl_subscription_t subscriber;
@@ -18,6 +18,7 @@ std_msgs__msg__Int32 cmd;
 
 LEDRing ledRing = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
 StatusManager& status = StatusManager::getInstance();
+std::vector<Motor> motors;
 
 
 void core1_entry() {
@@ -53,10 +54,6 @@ void blink_error() {
   led_status_blink(1000, 300, 100);
 }
 
-
-// Pulse counter
-void gpio_callback(uint gpio, uint32_t events) { pulses++; }
-
 void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
 //   // Blink to show activity
 //   led_on = !led_on;
@@ -71,11 +68,19 @@ static bool led_status = false;
 led_status = !led_status;
 // led_status_set(led_status);
 
-  // msg.data = pulses;
-  // msg.data = speed;
-  // if (RCL_RET_OK != rcl_publish(&publisher, &msg, NULL)) {
-  //   blink_error();
-  // }
+  std_msgs__msg__Int32 newMsgOut;
+  // newMsgOut.data = pulses;
+  for (auto& motor : motors) {
+    newMsgOut.data = motor.getPulses();
+    if (newMsgOut.data != 0) {
+      break;
+    }
+  }
+  // msgOut.data = globalTicks;
+  // msg.data = motors[3].getPulses();
+  if (RCL_RET_OK != rcl_publish(&publisher, &newMsgOut, NULL)) {
+    blink_error();
+  }
   // pulses = 0;
 
   // on = !on;
@@ -108,8 +113,12 @@ led_status = !led_status;
 void subscription_callback(const void *msgin) {
   // Cast received message to used type
   const std_msgs__msg__Int32 *m = (const std_msgs__msg__Int32 *)msgin;
-  speed = m->data;
+  // speed = m->data;
   status.set(Status::Active);
+  // for each motor, set speed
+  for (auto& motor : motors) {
+    motor.setSpeed(m->data);
+  }
 }
 
 int main() {
@@ -117,48 +126,58 @@ int main() {
   led_status_init();
 
   // Add a Motor instance for all 4 motors PIN_MOTOR_FRONT_LEFT and so on
-  std::vector<Motor> motors;
-  motors.emplace_back(PIN_MOTOR_FRONT_LEFT);
-  motors.emplace_back(PIN_MOTOR_FRONT_RIGHT);
-  motors.emplace_back(PIN_MOTOR_BACK_LEFT);
-  motors.emplace_back(PIN_MOTOR_BACK_RIGHT);
+  motors.emplace_back(PIN_MOTOR_FRONT_LEFT, PIN_ENCODER_FRONT_LEFT);
+  motors.emplace_back(PIN_MOTOR_FRONT_RIGHT, PIN_ENCODER_FRONT_RIGHT);
+  motors.emplace_back(PIN_MOTOR_BACK_LEFT, PIN_ENCODER_BACK_LEFT);
+  motors.emplace_back(PIN_MOTOR_BACK_RIGHT, PIN_ENCODER_BACK_RIGHT);
+
+  // Arm motors
+  // for (auto& motor : motors) {
+  //   motor.setSpeed(-250);
+  // }
+  // sleep_ms(200);
+  // for (auto& motor : motors) {
+  //   motor.setSpeed(0);
+  // }
+  // sleep_ms(1000);
+  
 
   // Wait for motors to start
-  sleep_ms(1000);
+  // sleep_ms(1000);
 
-  for (int i = 0; i <= 32000; i+=10) {
-    for (auto& motor : motors) {
-      motor.setSpeed(i);
-    }
-    ledRing.fill(0, 0, i>>8);
-    sleep_ms(1);
-  }
+  // for (int i = 0; i <= 32000; i+=10) {
+  //   for (auto& motor : motors) {
+  //     motor.setSpeed(i);
+  //   }
+  //   ledRing.fill(0, 0, i>>8);
+  //   sleep_ms(1);
+  // }
 
-  for (int i = 32000; i >= 0 ; i-=10) {
-      for (auto& motor : motors) {
-        motor.setSpeed(i); 
-      }
-      ledRing.fill(0, 0, i>>8);
-      sleep_ms(1);
-  }
+  // for (int i = 32000; i >= 0 ; i-=10) {
+  //     for (auto& motor : motors) {
+  //       motor.setSpeed(i); 
+  //     }
+  //     ledRing.fill(0, 0, i>>8);
+  //     sleep_ms(1);
+  // }
 
-  for (int i = 0; i >= -32000; i-=10) {
-    for (auto& motor : motors) {
-      motor.setSpeed(i);
-    }
-    ledRing.fill(i>>8, 0, 0);
-    sleep_ms(1);
-  }
+  // for (int i = 0; i >= -32000; i-=10) {
+  //   for (auto& motor : motors) {
+  //     motor.setSpeed(i);
+  //   }
+  //   ledRing.fill(i>>8, 0, 0);
+  //   sleep_ms(1);
+  // }
 
-  for (int i = -32000; i <= 0 ; i+=10) {
-      for (auto& motor : motors) {
-        motor.setSpeed(i); 
-      }
-      ledRing.fill(i>>8, 0, 0);
-      sleep_ms(1);
-  }
+  // for (int i = -32000; i <= 0 ; i+=10) {
+  //     for (auto& motor : motors) {
+  //       motor.setSpeed(i); 
+  //     }
+  //     ledRing.fill(i>>8, 0, 0);
+  //     sleep_ms(1);
+  // }
 
-  sleep_ms(100000);
+  // sleep_ms(100000);
   // Parallel processing core
   multicore_launch_core1(core1_entry);
 
@@ -191,29 +210,29 @@ int main() {
   // led_status_blink(30, 100, 100);
   // led_status_blink(100, 10, 100);
 
-  msg.data = 0;
+  // msgOut.data = 0;
 
   rmw_uros_set_custom_transport(
       true, NULL, pico_serial_transport_open, pico_serial_transport_close,
       pico_serial_transport_write, pico_serial_transport_read);
 
-  gpio_init(PIN_MOTOR_A);
-  gpio_set_dir(PIN_MOTOR_A, GPIO_OUT);
+  // gpio_init(PIN_MOTOR_A);
+  // gpio_set_dir(PIN_MOTOR_A, GPIO_OUT);
 
   // gpio_init(PIN_MOTOR_B);
   // gpio_set_dir(PIN_MOTOR_B, GPIO_OUT);
 
   // Pulse counter (rotary encoder) input
-  gpio_set_irq_enabled_with_callback(PIN_PULSE_A,
-                                     GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
-                                     true, &gpio_callback);
+  // gpio_set_irq_enabled_with_callback(PIN_PULSE_A,
+  //                                    GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
+  //                                    true, &gpio_callback);
 
   // PWM Out for motor control
-  uint slice_num = pwm_gpio_to_slice_num(PIN_MOTOR_B);
-  gpio_set_function(PIN_MOTOR_B, GPIO_FUNC_PWM);
-  pwm_set_wrap(slice_num, max_speed); // default clock is 125MHz (8ns)
-  pwm_set_enabled(slice_num, true);
-  pwm_set_gpio_level(PIN_MOTOR_B, 0);
+  // uint slice_num = pwm_gpio_to_slice_num(PIN_MOTOR_B);
+  // gpio_set_function(PIN_MOTOR_B, GPIO_FUNC_PWM);
+  // pwm_set_wrap(slice_num, max_speed); // default clock is 125MHz (8ns)
+  // pwm_set_enabled(slice_num, true);
+  // pwm_set_gpio_level(PIN_MOTOR_B, 0);
 
   // ROS2 Node
   rcl_timer_t timer;

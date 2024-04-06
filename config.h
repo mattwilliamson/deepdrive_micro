@@ -1,5 +1,8 @@
 #pragma once
 
+// deepdrive_micro/pulses
+// deepdrive_micro/cmd
+
 // Comment out to disable
 // #define WATCHDOG_ENABLED 1
 
@@ -32,7 +35,7 @@
 // ----------------------------------
 // GPIO 22
 
-// #define LED_RING_ENABLED 1
+#define LED_RING_ENABLED 1
 
 #ifdef PICO_DEFAULT_WS2812_PIN
 #define LED_RING_PIN PICO_DEFAULT_WS2812_PIN
@@ -57,6 +60,7 @@
 // START MOTORS
 // ----------------------------------
 
+#define MOTOR_COUNT 4
 #define PIN_MOTOR_FRONT_LEFT    9
 #define PIN_MOTOR_FRONT_RIGHT   7
 #define PIN_MOTOR_BACK_LEFT     8
@@ -71,10 +75,12 @@
 // START PULSE COUNTER
 // ----------------------------------
 
-#define PIN_PULSE_COUNTER_FRONT_LEFT    13
-#define PIN_PULSE_COUNTER_FRONT_RIGHT   11
-#define PIN_PULSE_COUNTER_BACK_LEFT     12
-#define PIN_PULSE_COUNTER_BACK_RIGHT    10
+#define PIN_ENCODER_FRONT_LEFT    13
+#define PIN_ENCODER_FRONT_RIGHT   11
+#define PIN_ENCODER_BACK_LEFT     12
+#define PIN_ENCODER_BACK_RIGHT    10
+
+#define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
 
 // END PULSE COUNTER
 // ----------------------------------

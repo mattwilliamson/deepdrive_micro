@@ -1,16 +1,17 @@
 #include "motor.h"
 
-Motor::Motor(int pin) {
+void gpio_callback(uint gpio, uint32_t events) {
+    pulse_count_map[gpio]++;
+}
+
+Motor::Motor(int pin, int encoderPin) {
     m_pin = pin;
+    m_encoderPin = encoderPin;
     m_speed = 0;
+    m_pulses = 0;
     enable();
 }
 
-/**
- * Enables the motor by configuring the necessary PWM settings.
- * This function sets the GPIO function to PWM, sets the clock divider to slow down the clock,
- * sets the wrap time to 9804 (20 ms), and enables the PWM slice.
- */
 void Motor::enable() {
     gpio_init(m_pin);
     gpio_set_dir(m_pin, GPIO_OUT);
@@ -21,6 +22,16 @@ void Motor::enable() {
     pwm_set_wrap(m_slice, 9804); // 20 ms
     pwm_set_enabled(m_slice, true);
 
+    // Handle encoder pulses, -1 means no encoder
+    if (m_encoderPin != -1) {
+        if (!gpio_callbacks_configured) {
+            gpio_callbacks_configured = true;
+            gpio_set_irq_enabled_with_callback(m_pin, GPIO_IRQ_TYPES, true, &gpio_callback);
+        } else {
+            gpio_set_irq_enabled(m_pin, GPIO_IRQ_TYPES, true);
+        }
+        pulse_count_map[m_encoderPin] = 0;
+    }
     // Arm the ESC
     // pwm_set_chan_level(m_slice, m_channel, DUTY_CYCLE_MIN);
     // sleep_ms(200);
@@ -31,38 +42,41 @@ void Motor::enable() {
     stop();
 }
 
-/**
- * Disables the motor by setting the PWM slice associated with the motor pin to disabled.
- */
+void Motor::readPulses() {
+    // TODO: See if we can make this atomic somehow to avoid missing pulses
+    int newPulses = pulse_count_map[m_encoderPin];
+    pulse_count_map[m_encoderPin];
+
+    if (m_speed < 0) {
+        m_pulses -= newPulses;
+    } else {
+        m_pulses += newPulses;
+    }
+}
+
+// WARNING: If we switch directions before
+int Motor::getPulses() {
+    readPulses();
+    return m_pulses;
+}
+
 void Motor::disable() {
     pwm_set_enabled(m_slice, false);
 }
 
-/**
- * Sets the speed of the motor.
- *
- * @param speed The speed value to set. Should be within the range of MIN_INT and MAX_INT. 
- * Negative values indicate reverse, 0 is stopped, and the maximum value is the maximum integer value.
- */
 void Motor::setSpeed(int16_t speed) {
+    // Read pulses before we potentially switch directions
+    readPulses();
+
     // Convert max/min int to max/min duty cycle
     int dutyCycle = map(speed, MIN_INT, MAX_INT, DUTY_CYCLE_MIN, DUTY_CYCLE_MAX);
     pwm_set_chan_level(m_slice, m_channel, dutyCycle);
 }
 
-/**
- * Gets the current speed of the motor.
- *
- * @return The current speed value.
- */
 int16_t Motor::getSpeed() {
     return m_speed;
 }
 
-
-/**
- * Stops the motor by setting the speed to 0.
- */
 void Motor::stop() {
     setSpeed(0);
 }
