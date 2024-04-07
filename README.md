@@ -55,9 +55,9 @@ ros2 topic echo deepdrive_micro/pulses
 Min/Max int16: +/- 32000
 
 ```sh
-ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: 5000}"
+ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: 2000}"
 ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: 0}"
-ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: -5000}"
+ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data: -2000}"
 ```
 
 TODO: 1000 stops

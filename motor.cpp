@@ -26,9 +26,9 @@ void Motor::enable() {
     if (m_encoderPin != -1) {
         if (!gpio_callbacks_configured) {
             gpio_callbacks_configured = true;
-            gpio_set_irq_enabled_with_callback(m_pin, GPIO_IRQ_TYPES, true, &gpio_callback);
+            gpio_set_irq_enabled_with_callback(m_encoderPin, GPIO_IRQ_TYPES, true, &gpio_callback);
         } else {
-            gpio_set_irq_enabled(m_pin, GPIO_IRQ_TYPES, true);
+            gpio_set_irq_enabled(m_encoderPin, GPIO_IRQ_TYPES, true);
         }
         pulse_count_map[m_encoderPin] = 0;
     }
@@ -45,7 +45,7 @@ void Motor::enable() {
 void Motor::readPulses() {
     // TODO: See if we can make this atomic somehow to avoid missing pulses
     int newPulses = pulse_count_map[m_encoderPin];
-    pulse_count_map[m_encoderPin];
+    pulse_count_map[m_encoderPin] = 0;
 
     if (m_speed < 0) {
         m_pulses -= newPulses;

@@ -35,7 +35,7 @@
 // ----------------------------------
 // GPIO 22
 
-#define LED_RING_ENABLED 1
+// #define LED_RING_ENABLED 1
 
 #ifdef PICO_DEFAULT_WS2812_PIN
 #define LED_RING_PIN PICO_DEFAULT_WS2812_PIN
@@ -81,6 +81,8 @@
 #define PIN_ENCODER_BACK_RIGHT    10
 
 #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
+
+#define PULSES_PER_REVOLUTION 1233 // 13074/10.6
 
 // END PULSE COUNTER
 // ----------------------------------
