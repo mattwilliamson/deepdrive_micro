@@ -6,6 +6,32 @@
 // Comment out to disable
 // #define WATCHDOG_ENABLED 1
 
+// ----------------------------------
+// START LED RING
+// ----------------------------------
+// GPIO 22
+
+#define LED_RING_ENABLED 1
+
+#ifdef PICO_DEFAULT_WS2812_PIN
+#define LED_RING_PIN PICO_DEFAULT_WS2812_PIN
+#else
+#define LED_RING_PIN 22
+#endif
+
+#define LED_RING_IS_RGBW false
+#define LED_RING_NUM_PIXELS 12
+
+#define LED_RING_PIO pio0
+
+#define LED_RING_DELAY_MS 10
+// #define LED_RING_DELAY_MS 100
+
+// END LED RING
+// ----------------------------------
+
+
+
 // START micro-ros
 // ----------------------------------
 
@@ -31,40 +57,20 @@
 
 
 // ----------------------------------
-// START LED RING
-// ----------------------------------
-// GPIO 22
-
-// #define LED_RING_ENABLED 1
-
-#ifdef PICO_DEFAULT_WS2812_PIN
-#define LED_RING_PIN PICO_DEFAULT_WS2812_PIN
-#else
-#define LED_RING_PIN 22
-#endif
-
-#define LED_RING_IS_RGBW false
-#define LED_RING_NUM_PIXELS 12
-
-#define LED_RING_PIO pio0
-
-#define LED_RING_DELAY_MS 10
-// #define LED_RING_DELAY_MS 100
-
-// END LED RING
-// ----------------------------------
-
-
-
-// ----------------------------------
 // START MOTORS
 // ----------------------------------
 
 #define MOTOR_COUNT 4
+
 #define PIN_MOTOR_FRONT_LEFT    9
-#define PIN_MOTOR_FRONT_RIGHT   7
 #define PIN_MOTOR_BACK_LEFT     8
+#define PIN_MOTOR_FRONT_RIGHT   7
 #define PIN_MOTOR_BACK_RIGHT    6
+
+#define IDX_MOTOR_FRONT_LEFT    0
+#define IDX_MOTOR_BACK_LEFT     1
+#define IDX_MOTOR_FRONT_RIGHT   2
+#define IDX_MOTOR_BACK_RIGHT    3
 
 // END MOTORS
 // ----------------------------------
@@ -72,17 +78,21 @@
 
 
 // ----------------------------------
-// START PULSE COUNTER
+// START WHEEL ENCODER PULSE COUNTER
 // ----------------------------------
 
 #define PIN_ENCODER_FRONT_LEFT    13
-#define PIN_ENCODER_FRONT_RIGHT   11
 #define PIN_ENCODER_BACK_LEFT     12
+#define PIN_ENCODER_FRONT_RIGHT   11
 #define PIN_ENCODER_BACK_RIGHT    10
 
-#define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
+// #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
+#define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE
 
-#define PULSES_PER_REVOLUTION 1233 // 13074/10.6
+#define WHEEL_RADIUS 89 // MM
+#define WHEEL_BASE 240 // MM distance between left and right wheels
 
-// END PULSE COUNTER
+
+
+// END WHEEL ENCODER PULSE COUNTER
 // ----------------------------------

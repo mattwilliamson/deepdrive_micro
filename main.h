@@ -19,7 +19,9 @@ extern "C" {
     #include <rclc/executor.h>
     #include <rclc/rclc.h>
     #include <rmw_microros/rmw_microros.h>
-    #include <std_msgs/msg/int32.h>
+    // #include <std_msgs/msg/int32.h>
+    // #include <std_msgs/msg/int32_multi_array.h>
+    #include <control_msgs/msg/mecanum_drive_controller_state.h>
 
 
     // /*
@@ -62,7 +64,7 @@ extern "C" {
   {                                                                            \
     rcl_ret_t temp_rc = fn;                                                    \
     if ((temp_rc != RCL_RET_OK)) {                                             \
-      status.set(Status::Error);                                         \
+      status.set(Status::Warning);                                             \
       sleep_ms(10000);                                                         \
       printf("Failed status on line %d: (error code: %d). Continuing.\n",      \
              __LINE__, (int)temp_rc);                                          \

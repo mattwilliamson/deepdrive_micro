@@ -3,16 +3,19 @@
 #include "config.h"
 #include <limits>
 #include <map>
+#include <math.h>
+#include "pid.h"
 
 extern "C" {
     #include "hardware/pwm.h"
     #include "pico/stdlib.h"
 }
 
+
 // Keep the intermediate pulse counts until the next read from the map
 static bool gpio_callbacks_configured = false; // Flag to check if the GPIO callbacks are configured
 
-// TODO: Prune this down to use less memory, an array is fast for now
+// TODO: Prune this down to use less memory, an array is fast for now, just wasting some ints in memory
 static volatile int pulse_count_map[30] = {}; // Map of pin number to pulse count
 
 // Got some help from https://cocode.se/linux/raspberry/pwm.html
@@ -26,9 +29,7 @@ static volatile int pulse_count_map[30] = {}; // Map of pin number to pulse coun
  */
 class Motor {
 public:
-    // Max speed backward
     static const int MIN_INT = std::numeric_limits<int16_t>::min() + 1; // +1 to avoid overflow
-    // Max speed forward
     static const int MAX_INT = std::numeric_limits<int16_t>::max() - 1; // -1 to avoid overflow
 
     // 1000 us
@@ -38,7 +39,9 @@ public:
     // 2000 us
     static const int DUTY_CYCLE_MAX         = 980;
     // surrounding 1500 us
-    static const int DUTY_CYCLE_DEADBAND    = 100;
+    static constexpr double PULSES_PER_REV = 696; // 34826/50 = 696 | 93156/127 = 734
+
+    PIDController* pidController_;  // PID controller for the motor
 
     /**
      * @brief Constructor for Motor class.
@@ -83,13 +86,13 @@ public:
     }
 
     /**
-     * @brief Get the current speed of the motor.
-     * @return The current speed of the motor.
+     * @brief Get the speed of the motor.
+     * @return The speed of the motor.
      */
     int16_t getSpeed();
 
     /**
-     * @brief Set the current speed of the motor.
+     * @brief Set the speed of the motor.
      * @param speed The speed value to set for the motor.
      *        Negative values indicate reverse, 0 is stopped, and the maximum value is the maximum integer value.
      */
@@ -107,13 +110,51 @@ public:
      * @brief Get the number of pulses counted by the motor.
      * @return The number of pulses counted by the motor.
      */
-    int getPulses();
+    int32_t getPulses();
+
+    /**
+     * @brief Spin the motor and update the PID controller.
+     */
+    void spin() {
+        // Get the current speed of the motor
+        int16_t currentSpeed = getSpeed();
+        
+        // Update the PID controller with the current speed
+        pidController_->calculate(currentSpeed);
+    }
+
+
+    /**
+     * @brief Convert pulses to radians.
+     * @param pulses The number of pulses to convert.
+     * @return The equivalent value in radians.
+     */
+    static double pulsesToRadians(int32_t pulses) {
+        // Calculate the conversion factor from pulses to radians
+        double conversionFactor = 2.0 * M_PI / PULSES_PER_REV;
+        // Convert the pulses to radians
+        double radians = pulses * conversionFactor;
+        return radians;
+    }
+
+    /**
+     * @brief Convert radians to pulses.
+     * @param radians The number of radians to convert.
+     * @return The equivalent value in pulses.
+     */
+    static int32_t radiansToPulses(double radians) {
+        // Calculate the conversion factor from radians to pulses
+        double conversionFactor = PULSES_PER_REV / (2.0 * M_PI);
+        // Convert the radians to pulses
+        int32_t pulses = static_cast<int32_t>(radians * conversionFactor);
+        return pulses;
+    }
 
 private:
-    int m_pin;          // Pin number of the motor
-    int m_encoderPin;   // Pin number of the motor encoder
-    int16_t m_speed;    // Current speed of the motor
-    uint m_slice;       // PWM slice number
-    uint m_channel;     // PWM channel number
-    int m_pulses;       // Number of pulses counted by the motor
+    int pin_;                       // Pin number of the motor
+    int encoderPin_;                // Pin number of the motor encoder
+    int16_t targetSpeed_;           // speed of the motor
+    uint slice_;                    // PWM slice number
+    uint channel_;                  // PWM channel number
+    int32_t pulses_;                // Number of pulses counted by the motor
 };

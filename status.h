@@ -13,6 +13,7 @@ enum class Status {
     Active,
     Executing,
     Success,
+    Warning,
     Error,
     Rebooted
 };

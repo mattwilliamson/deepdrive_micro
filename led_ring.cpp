@@ -59,6 +59,9 @@ void LEDRing::renderStatus(Status status)
     case Status::Error:
         fadeR(0x99, t);
         break;
+    case Status::Warning:
+        roll(0x99, 0x66, 0x00, t);
+        break;
     case Status::Active:
         fill(0x66, 0x66, 0x66);
         break;
