@@ -1,4 +1,6 @@
-#pragma once
+#ifndef MOTOR_H
+#define MOTOR_H
+
 
 #include "config.h"
 #include <limits>
@@ -235,3 +237,5 @@ private:
     int32_t deltaPulses_;           // Number of pulses counted by the motor in the last readPulses call
     int dutyCycle_;                 // PWM duty cycle
 };
+
+#endif // MOTOR_H

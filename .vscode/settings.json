@@ -1,6 +1,7 @@
 {
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/libmicroros/include/**",
+        "${workspaceFolder}/include/**",
         "${env:PICO_SDK_PATH}/src/**"
     ],
     "C_Cpp.default.mergeConfigurations": true,

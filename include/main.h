@@ -27,6 +27,8 @@ extern "C" {
     #include <sensor_msgs/msg/joint_state.h>
     #include <rosidl_runtime_c/string.h>
     #include <micro_ros_utilities/string_utilities.h>
+    #include <rosidl_runtime_c/string_functions.h>
+    #include <rosidl_runtime_c/primitives_sequence_functions.h>
 
     // /*
     //  * PICO HEADERS
@@ -79,9 +81,5 @@ extern "C" {
     }                                                                          \
   }
 
-#define MICROSECONDS 1000000
-
-char JOINT_NAME_FRONT_LEFT[] =    "wheel_front_left_joint";
-char JOINT_NAME_BACK_LEFT[] =     "wheel_back_left_joint";
-char JOINT_NAME_FRONT_RIGHT[] =   "wheel_front_right_joint";
-char JOINT_NAME_BACK_RIGHT[] =    "wheel_back_right_joint";
+#define MICROSECONDS 1e6
+#define MILLISECONDS 1e3

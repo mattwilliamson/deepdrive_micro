@@ -8,18 +8,23 @@ set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
+include_directories(
+  include
+)
+
+
 link_directories(libmicroros)
 add_executable(deepdrive_micro
-    main.cpp
-    pico_uart_transport.c
-    led_ring.cpp
-    led_status.c
-    servo.c
-    status.cpp
-    motor.cpp
-    imu.cpp
-    pid.cpp
-    analog_sensors.cpp
+    src/main.cpp
+    src/pico_uart_transport.c
+    src/led_ring.cpp
+    src/led_status.c
+    src/servo.c
+    src/status.cpp
+    src/motor.cpp
+    src/imu.cpp
+    src/pid.cpp
+    src/analog_sensors.cpp
 )
 
 # To add to this, here are examples: `cat /usr/src/pico-sdk/test/kitchen_sink/CMakeLists.txt | grep pwm`

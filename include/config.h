@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CONFIG_H
+#define CONFIG_H
 
 // deepdrive_micro/pulses
 // deepdrive_micro/cmd
@@ -74,6 +75,11 @@
 #define IDX_MOTOR_FRONT_RIGHT   2
 #define IDX_MOTOR_BACK_RIGHT    3
 
+#define MOTOR_JOIN_FRONT_LEFT "wheel_front_left_joint"
+#define MOTOR_JOIN_BACK_LEFT "wheel_back_left_joint"
+#define MOTOR_JOIN_FRONT_RIGHT "wheel_front_right_joint"
+#define MOTOR_JOIN_BACK_RIGHT "wheel_back_right_joint"
+
 // END MOTORS
 // ----------------------------------
 
@@ -135,3 +141,6 @@
 
 // END BATTERY VOLTAGE
 // ----------------------------------
+
+
+#endif // CONFIG_H

@@ -1,7 +1,7 @@
 #include "main.h"
 
-// Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 3 publisher)
-const size_t uRosHandles = 5;
+// Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 4 publisher)
+const size_t uRosHandles = 6;
 
 rcl_timer_t timer;
 rcl_node_t node;
@@ -15,7 +15,7 @@ rcl_publisher_t publisher_join_state;
 
 control_msgs__msg__MecanumDriveControllerState mgs_out_motor;
 sensor_msgs__msg__BatteryState msg_out_battery;
-sensor_msgs__msg__JointState msg_out_joint_state;
+sensor_msgs__msg__JointState *msg_out_joint_state;
 
 rcl_subscription_t subscriber_motor;
 control_msgs__msg__MecanumDriveControllerState msg_in_motor;
@@ -136,16 +136,18 @@ int init_joint_state()  {
       &publisher_join_state, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
       "deepdrive_micro/joint_state"));
 
-  msg_out_joint_state.name.capacity = MOTOR_COUNT;
-  msg_out_joint_state.position.capacity = MOTOR_COUNT;
-  msg_out_joint_state.velocity.capacity = MOTOR_COUNT;
-  msg_out_joint_state.effort.capacity = MOTOR_COUNT;
+   msg_out_joint_state = sensor_msgs__msg__JointState__create();
+   micro_ros_string_utilities_set(msg_out_joint_state->header.frame_id, "base_link");
+  
+  msg_out_joint_state->name = *rosidl_runtime_c__String__Sequence__create(MOTOR_COUNT);
+  rosidl_runtime_c__float64__Sequence__init(&msg_out_joint_state->position, MOTOR_COUNT);
+  rosidl_runtime_c__float64__Sequence__init(&msg_out_joint_state->velocity, MOTOR_COUNT);
+  rosidl_runtime_c__float64__Sequence__init(&msg_out_joint_state->effort, MOTOR_COUNT);
 
-  micro_ros_string_utilities_set(msg_out_joint_state.header.frame_id, "base_link");
-  micro_ros_string_utilities_set(msg_out_joint_state.name.data[IDX_MOTOR_FRONT_LEFT], JOINT_NAME_FRONT_LEFT);
-  micro_ros_string_utilities_set(msg_out_joint_state.name.data[IDX_MOTOR_BACK_LEFT], JOINT_NAME_BACK_LEFT);
-  micro_ros_string_utilities_set(msg_out_joint_state.name.data[IDX_MOTOR_FRONT_RIGHT], JOINT_NAME_FRONT_RIGHT);
-  micro_ros_string_utilities_set(msg_out_joint_state.name.data[IDX_MOTOR_BACK_RIGHT], JOINT_NAME_BACK_RIGHT);
+  msg_out_joint_state->name.data[IDX_MOTOR_FRONT_LEFT] = micro_ros_string_utilities_init(MOTOR_JOIN_FRONT_LEFT);
+  msg_out_joint_state->name.data[IDX_MOTOR_BACK_LEFT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_LEFT);
+  msg_out_joint_state->name.data[IDX_MOTOR_FRONT_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_FRONT_RIGHT);
+  msg_out_joint_state->name.data[IDX_MOTOR_BACK_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_RIGHT);
 
   return 0;
 }
@@ -157,18 +159,17 @@ void publish_joint_state() {
   *  * the velocity of the joint (rad/s or m/s) and
   *  * the effort that is applied in the joint (Nm or N).
   */
-  msg_out_joint_state.header.stamp.sec = rmw_uros_epoch_millis() / 1000;
-  msg_out_joint_state.header.stamp.nanosec = rmw_uros_epoch_nanos();
+  msg_out_joint_state->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
+  msg_out_joint_state->header.stamp.nanosec = rmw_uros_epoch_nanos();
 
   // TODO: Actually populate
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    msg_out_joint_state.position.data[i] = motors[i]->getSpeedMetersPerSecond();
-    msg_out_joint_state.velocity.data[i] = motors[i]->getSpeedMetersPerSecond();
-    msg_out_joint_state.effort.data[i] = motors[i]->getSpeedMetersPerSecond();
+    msg_out_joint_state->position.data[i] = motors[i]->getSpeedMetersPerSecond();
+    msg_out_joint_state->velocity.data[i] = motors[i]->getSpeedMetersPerSecond();
+    msg_out_joint_state->effort.data[i] = motors[i]->getSpeedMetersPerSecond();
   }
 
-  RCSOFTCHECK(rcl_publish(&publisher_join_state, &msg_out_joint_state, NULL));
-
+  RCSOFTCHECK(rcl_publish(&publisher_join_state, msg_out_joint_state, NULL));
 }
 
 void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
@@ -207,15 +208,7 @@ void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
   // TODO: Move some of these to config
   publish_battery();
 
-  msg_out_joint_state.header.stamp.sec = rmw_uros_epoch_millis() / 1000;
-  msg_out_joint_state.header.stamp.nanosec = rmw_uros_epoch_nanos();
-
-
-
-
-
-  RCSOFTCHECK(rcl_publish(&publisher_join_state, &msg_out_joint_state, NULL));
-  
+  publish_joint_state();
 }
 
 // void timer_cb_led_ring(rcl_timer_t *timer, int64_t last_call_time) {
@@ -258,9 +251,6 @@ int main() {
   setup_watchdog();
   led_ring.start();
   led_status_init();
-
-  if (init_battery() != 0) {return 1;};
-  if (init_joint_state() != 0) {return 1;};
 
   analog_sensors->init();
 
@@ -310,6 +300,9 @@ int main() {
   RCCHECK(rclc_publisher_init_default(
       &publisher_motor, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg, MecanumDriveControllerState),
       "deepdrive_micro/pulses"));
+
+  if (init_battery() != 0) {return 1;};
+  if (init_joint_state() != 0) {return 1;};
 
   // Timer
   RCCHECK(rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(1.0/CONTROL_LOOP_HZ*1000),
