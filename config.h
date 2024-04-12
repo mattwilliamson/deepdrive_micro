@@ -3,6 +3,9 @@
 // deepdrive_micro/pulses
 // deepdrive_micro/cmd
 
+// #define CONTROL_LOOP_HZ 1.0
+#define CONTROL_LOOP_HZ 50
+
 // Comment out to disable
 // #define WATCHDOG_ENABLED 1
 
@@ -11,7 +14,7 @@
 // ----------------------------------
 // GPIO 22
 
-#define LED_RING_ENABLED 1
+// #define LED_RING_ENABLED 1
 
 #ifdef PICO_DEFAULT_WS2812_PIN
 #define LED_RING_PIN PICO_DEFAULT_WS2812_PIN
@@ -24,8 +27,7 @@
 
 #define LED_RING_PIO pio0
 
-#define LED_RING_DELAY_MS 10
-// #define LED_RING_DELAY_MS 100
+#define LED_RING_HZ 10
 
 // END LED RING
 // ----------------------------------
@@ -89,10 +91,47 @@
 // #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
 #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE
 
-#define WHEEL_RADIUS 89 // MM
+#define WHEEL_DIAMETER 89 // MM
 #define WHEEL_BASE 240 // MM distance between left and right wheels
 
 
 
 // END WHEEL ENCODER PULSE COUNTER
+// ----------------------------------
+
+
+
+
+// ----------------------------------
+// START PID CONTROLLER
+// ----------------------------------
+
+// Proportional
+#define PID_KP 0.045 // .9 oscillates, .04 isn't enough to drive at all
+
+// Integral
+#define PID_KI 0.0001
+
+// Derivative
+#define PID_KD 0.0
+
+// END PID CONTROLLER
+// ----------------------------------
+
+
+
+// ----------------------------------
+// START BATTERY VOLTAGE
+// ----------------------------------
+
+// Battery voltage divider pin
+#define PIN_BATTERY_VOLTAGE 26
+
+// Battery voltage divider input number (GPIO26 ADC0)
+#define PIN_BATTERY_VOLTAGE_INPUT 0
+
+// Battery voltage reference
+#define BATTERY_VOLTAGE_REFERENCE 3.3f
+
+// END BATTERY VOLTAGE
 // ----------------------------------

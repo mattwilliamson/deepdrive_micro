@@ -22,7 +22,10 @@ public:
      * @param Kd The derivative gain.
      */
     PIDController(double min, double max, double Kp, double Ki, double Kd):
-        min_(min), max_(max), Kp_(Kp), Ki_(Ki), Kd_(Kd){}
+        min_(min), max_(max), Kp_(Kp), Ki_(Ki), Kd_(Kd){
+            integral_ = 0;
+            pre_error_ = 0;
+        }
 
     /**
      * @brief Overloaded constructor for PIDController class.
@@ -35,6 +38,8 @@ public:
             max_(std::numeric_limits<double>::max()),
             Kp_(Kp), Ki_(Ki), Kd_(Kd)
     {
+        integral_ = 0;
+        pre_error_ = 0;
     }
 
     /**
@@ -46,6 +51,8 @@ public:
           max_(std::numeric_limits<double>::max()),
           Kp_(0.0), Ki_(0.0), Kd_(0.0)
     {
+        integral_ = 0;
+        pre_error_ = 0;
     }
 
     /**

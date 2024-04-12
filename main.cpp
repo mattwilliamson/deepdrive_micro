@@ -1,75 +1,195 @@
 #include "main.h"
 
-// TODO: PID Controller for revolutions per second
+// Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 3 publisher)
+const size_t uRosHandles = 5;
 
-uint8_t on = 0;
-int8_t direction = 1;
-uint pulses = 0;
-int speed = 65000;
-const uint max_speed = 65000;
+rcl_timer_t timer;
+rcl_node_t node;
+rcl_allocator_t allocator;
+rclc_support_t support;
+rclc_executor_t executor;
 
-rcl_publisher_t publisher;
-// std_msgs__msg__Int32 msgOut;
-control_msgs__msg__MecanumDriveControllerState msgOut;
+rcl_publisher_t publisher_motor;
+rcl_publisher_t publisher_battery;
+rcl_publisher_t publisher_join_state;
 
-// Set up subscriber
-rcl_subscription_t subscriber;
-// std_msgs__msg__Int32 cmd;
-control_msgs__msg__MecanumDriveControllerState cmd;
+control_msgs__msg__MecanumDriveControllerState mgs_out_motor;
+sensor_msgs__msg__BatteryState msg_out_battery;
+sensor_msgs__msg__JointState msg_out_joint_state;
 
-LEDRing ledRing = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
+rcl_subscription_t subscriber_motor;
+control_msgs__msg__MecanumDriveControllerState msg_in_motor;
+// maybe switch to control_msgs__msg__SteeringControllerStatus
+
+LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
 StatusManager& status = StatusManager::getInstance();
 std::vector<Motor*> motors(MOTOR_COUNT);
 
+// TODO: Do I need to publish trajectory_msgs__msg__JointTrajectoryPoint ?
 
+volatile bool render_led_ring = false;
+volatile bool control_due = false;
+
+repeating_timer_t timer_control;
+repeating_timer_t timer_led_ring;
+
+AnalogSensors* analog_sensors;
+
+bool trigger_control(repeating_timer_t *rt) {
+  control_due = true;
+  return true;
+}
+
+bool trigger_led_ring(repeating_timer_t *rt) {
+  render_led_ring = true;
+  return true;
+}
+
+// Second core worker function
+// LED Ring and control loop
 void core1_entry() {
-  // Run the led ring animation loop on the other core in parallel
-  // multicore_fifo_push_blocking(FLAG_VALUE);
-
-  // Wait for first status push
-  // uint32_t g = multicore_fifo_pop_blocking();
-  // uint32_t g = (uint32_t)Status::Init;
   bool led_on = true;
 
   #ifndef LED_RING_ENABLED
-  ledRing.off();
+  led_ring.off();
   return;
   #endif
 
   while (true) {
-    led_on = !led_on;
-    ledRing.renderStatus(status.get());
-    led_status_set(led_on);
-    sleep_ms(LED_RING_DELAY_MS);
-    // sleep_ms(100);
 
-    // Wait for next status push
-    // Might not actually need IPC here
-    // if (multicore_fifo_pop_timeout_us(0, &g)) {
-    //   ledRing.resetAnimation();
-    // }
+    // Control loop for motors
+    if (control_due) {
+      control_due = false;
+
+      // Read any motor encoder pulses
+      for (auto& motor : motors) {
+        // Calculate instantaneous speed and PID controller output
+        int16_t pid_output = motor->calculatePid();
+
+        if (motor->getTargetSpeed() == 0) {
+          // We're supposed to be stopped, so let reset it all
+          motor->stop();
+          motor->pidController_->reset();
+        } else {
+          // Set the motor speed to the output the PID controller calculated
+          motor->setSpeed(pid_output);
+        }
+      }
+    }
+
+    // LED Ring Loop
+    if (render_led_ring) {
+      render_led_ring = false;
+      led_on = !led_on;
+      led_ring.renderStatus(status.get());
+      led_status_set(led_on);
+    }
+
+    // Sit tight until we have more work to do
+    // tight_loop_contents();
+    sleep_ms(1);
   }
 }
 
-void blink_error() {
-  led_status_blink(1000, 300, 100);
+// void publishDiagnosticMessage(const std::string& message) {
+//   float temp = analog_sensors->getTemperature();
+//   float battery = analog_sensors->getBatteryVoltage();
+  
+//   diagnostic_msgs__msg__DiagnosticStatus diagnostic_msg;
+//   diagnostic_msg.level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+//   diagnostic_msg.message = message;
+
+//   // Publish the diagnostic message
+//   rcl_publisher_t diagnostic_publisher;
+//   RCCHECK(rclc_publisher_init_default(
+//     &diagnostic_publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(diagnostic_msgs, msg, DiagnosticStatus),
+//     "diagnostics"));
+//   RCSOFTCHECK(rcl_publish(&diagnostic_publisher, &diagnostic_msg, NULL));
+//   RCCHECK(rcl_publisher_fini(&diagnostic_publisher, &node));
+// }
+
+int init_battery() {
+  RCCHECK(rclc_publisher_init_default(
+      &publisher_battery, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState),
+      "deepdrive_micro/battery"));
+
+  micro_ros_string_utilities_set(msg_out_battery.location, "base_link");
+  micro_ros_string_utilities_set(msg_out_battery.serial_number,  "1234567890");
+
+  return 0;
+}
+
+void publish_battery() {
+  msg_out_battery.voltage = analog_sensors->getBatteryVoltage();
+  msg_out_battery.percentage = AnalogSensors::convertVoltageToPercentage(msg_out_battery.voltage);
+  msg_out_battery.design_capacity = 5200;
+  msg_out_battery.present = true;
+  msg_out_battery.temperature = analog_sensors->getTemperature();
+  
+  msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
+
+  RCSOFTCHECK(rcl_publish(&publisher_battery, &msg_out_battery, NULL));
+}
+
+int init_joint_state()  {
+  RCCHECK(rclc_publisher_init_default(
+      &publisher_join_state, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
+      "deepdrive_micro/joint_state"));
+
+  msg_out_joint_state.name.capacity = MOTOR_COUNT;
+  msg_out_joint_state.position.capacity = MOTOR_COUNT;
+  msg_out_joint_state.velocity.capacity = MOTOR_COUNT;
+  msg_out_joint_state.effort.capacity = MOTOR_COUNT;
+
+  micro_ros_string_utilities_set(msg_out_joint_state.header.frame_id, "base_link");
+  micro_ros_string_utilities_set(msg_out_joint_state.name.data[IDX_MOTOR_FRONT_LEFT], JOINT_NAME_FRONT_LEFT);
+  micro_ros_string_utilities_set(msg_out_joint_state.name.data[IDX_MOTOR_BACK_LEFT], JOINT_NAME_BACK_LEFT);
+  micro_ros_string_utilities_set(msg_out_joint_state.name.data[IDX_MOTOR_FRONT_RIGHT], JOINT_NAME_FRONT_RIGHT);
+  micro_ros_string_utilities_set(msg_out_joint_state.name.data[IDX_MOTOR_BACK_RIGHT], JOINT_NAME_BACK_RIGHT);
+
+  return 0;
+}
+
+void publish_joint_state() {
+  /**
+  * The state of each joint (revolute or prismatic) is defined by:
+  *  * the position of the joint (rad or m),
+  *  * the velocity of the joint (rad/s or m/s) and
+  *  * the effort that is applied in the joint (Nm or N).
+  */
+  msg_out_joint_state.header.stamp.sec = rmw_uros_epoch_millis() / 1000;
+  msg_out_joint_state.header.stamp.nanosec = rmw_uros_epoch_nanos();
+
+  // TODO: Actually populate
+  for (int i = 0; i < MOTOR_COUNT; i++) {
+    msg_out_joint_state.position.data[i] = motors[i]->getSpeedMetersPerSecond();
+    msg_out_joint_state.velocity.data[i] = motors[i]->getSpeedMetersPerSecond();
+    msg_out_joint_state.effort.data[i] = motors[i]->getSpeedMetersPerSecond();
+  }
+
+  RCSOFTCHECK(rcl_publish(&publisher_join_state, &msg_out_joint_state, NULL));
+
 }
 
 void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
-    // msgOut.header.stamp.sec = 
-    msgOut.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getPulses();
-    msgOut.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getPulses();
-    msgOut.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getPulses();
-    msgOut.back_right_wheel_velocity = motors[IDX_MOTOR_BACK_RIGHT]->getPulses();
-    // msgOut.data.capacity = 4;
-    // msgOut.data.size = 4;
-    // msgOut.data.data[IDX_MOTOR_FRONT_LEFT] = motors[IDX_MOTOR_FRONT_LEFT]->getPulses();
-    // msgOut.data.data[IDX_MOTOR_FRONT_RIGHT] = motors[IDX_MOTOR_FRONT_RIGHT]->getPulses();
-    // msgOut.data.data[IDX_MOTOR_BACK_LEFT] = motors[IDX_MOTOR_BACK_LEFT]->getPulses();
-    // msgOut.data.data[IDX_MOTOR_BACK_RIGHT] = motors[IDX_MOTOR_BACK_RIGHT]->getPulses();
-    // msgOut.data = motors[IDX_MOTOR_FRONT_LEFT]->getPulses();
+    mgs_out_motor.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedMetersPerSecond();
+    mgs_out_motor.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedMetersPerSecond();
+    mgs_out_motor.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getSpeedMetersPerSecond();
+    mgs_out_motor.back_right_wheel_velocity = motors[IDX_MOTOR_BACK_RIGHT]->getSpeedMetersPerSecond();
 
-  RCSOFTCHECK(rcl_publish(&publisher, &msgOut, NULL));
+    // mgs_out_motor.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedcmd();
+    // mgs_out_motor.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedcmd();
+    // mgs_out_motor.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getSpeedcmd();
+    // mgs_out_motor.back_right_wheel_velocity = motors[IDX_MOTOR_BACK_RIGHT]->getSpeedcmd();
+
+  // float temp = analog_sensors->getTemperature();
+  // float battery = analog_sensors->getBatteryVoltage();
+  // mgs_out_motor.reference_velocity.linear.x = temp;
+  // mgs_out_motor.reference_velocity.linear.y = battery;
+  // x -1479.795166015625
+  // y 3.2991943359375
+
+  RCSOFTCHECK(rcl_publish(&publisher_motor, &mgs_out_motor, NULL));
 
   // if (RMW_RET_OK != rmw_uros_ping_agent(100, 1)) {
   //   // Lost connection to agent. Stop motors.
@@ -83,6 +203,19 @@ void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
   // } else {
   //   printf("Agent is still up!\n\n");
   // }
+
+  // TODO: Move some of these to config
+  publish_battery();
+
+  msg_out_joint_state.header.stamp.sec = rmw_uros_epoch_millis() / 1000;
+  msg_out_joint_state.header.stamp.nanosec = rmw_uros_epoch_nanos();
+
+
+
+
+
+  RCSOFTCHECK(rcl_publish(&publisher_join_state, &msg_out_joint_state, NULL));
+  
 }
 
 // void timer_cb_led_ring(rcl_timer_t *timer, int64_t last_call_time) {
@@ -92,44 +225,20 @@ void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
 // }
 
 // Subscriber callback
-void subscription_callback(const void *msgIn) {
+void subscription_motor_callback(const void *msgIn) {
   status.set(Status::Active);
 
   // Cast received message to used type
 
   const control_msgs__msg__MecanumDriveControllerState *m = (const control_msgs__msg__MecanumDriveControllerState *)msgIn;
-  motors[IDX_MOTOR_FRONT_LEFT]->setSpeed(m->front_left_wheel_velocity);
-  motors[IDX_MOTOR_FRONT_RIGHT]->setSpeed(m->front_right_wheel_velocity);
-  motors[IDX_MOTOR_BACK_LEFT]->setSpeed(m->back_left_wheel_velocity);
-  motors[IDX_MOTOR_BACK_RIGHT]->setSpeed(m->back_right_wheel_velocity);
-  // for (size_t i = 0; i < motors.size(); i++) {
-  //   if (i < m->data.size) {
-  //     motors[i]->setSpeed(m->data.data[i]);
-  //   }
-  // }
-  
-  // Cast received message to used type
-  // const std_msgs__msg__Int32 *m = (const std_msgs__msg__Int32 *)msgIn;
-  // motors[IDX_MOTOR_FRONT_LEFT]->setSpeed(m->data);
+  motors[IDX_MOTOR_FRONT_LEFT]->setTargetSpeed(m->front_left_wheel_velocity);
+  motors[IDX_MOTOR_FRONT_RIGHT]->setTargetSpeed(m->front_right_wheel_velocity);
+  motors[IDX_MOTOR_BACK_LEFT]->setTargetSpeed(m->back_left_wheel_velocity);
+  motors[IDX_MOTOR_BACK_RIGHT]->setTargetSpeed(m->back_right_wheel_velocity);
 }
 
-int main() {
-  ledRing.start();
-  status.set(Status::Connecting);
-  led_status_init();
-
-  // Setup 4 ESC brushless motor controllers
-  motors[IDX_MOTOR_FRONT_LEFT] = new Motor(PIN_MOTOR_FRONT_LEFT, PIN_ENCODER_FRONT_LEFT);
-  motors[IDX_MOTOR_BACK_LEFT] = new Motor(PIN_MOTOR_BACK_LEFT, PIN_ENCODER_BACK_LEFT);
-  motors[IDX_MOTOR_FRONT_RIGHT] = new Motor(PIN_MOTOR_FRONT_RIGHT, PIN_ENCODER_FRONT_RIGHT);
-  motors[IDX_MOTOR_BACK_RIGHT] = new Motor(PIN_MOTOR_BACK_RIGHT, PIN_ENCODER_BACK_RIGHT);
-
-  // Parallel processing core - Currently just animates RGB LED ring
-  multicore_launch_core1(core1_entry);
-
-  status.set(Status::Connecting);
-
-  #ifdef WATCHDOG_ENABLED
+void setup_watchdog() {
+#ifdef WATCHDOG_ENABLED
   // We rebooted because we got stuck or something
   if (watchdog_caused_reboot()) {
     // printf("Rebooted by Watchdog!\n");
@@ -140,86 +249,93 @@ int main() {
   // Enable the watchdog, requiring the watchdog to be updated every 100ms or the chip will reboot
   // second arg is pause on debug which means the watchdog will pause when stepping through code
   watchdog_enable(1000, false);
-  #endif
+#endif
+}
 
+int main() {
+
+  // stdio_init_all(); // Called by uros
+  setup_watchdog();
+  led_ring.start();
+  led_status_init();
+
+  if (init_battery() != 0) {return 1;};
+  if (init_joint_state() != 0) {return 1;};
+
+  analog_sensors->init();
+
+  status.set(Status::Connecting);
+
+  // Setup 4 ESC brushless motor controllers
+  motors[IDX_MOTOR_FRONT_LEFT] = new Motor(PIN_MOTOR_FRONT_LEFT, PIN_ENCODER_FRONT_LEFT);
+  motors[IDX_MOTOR_BACK_LEFT] = new Motor(PIN_MOTOR_BACK_LEFT, PIN_ENCODER_BACK_LEFT);
+  motors[IDX_MOTOR_FRONT_RIGHT] = new Motor(PIN_MOTOR_FRONT_RIGHT, PIN_ENCODER_FRONT_RIGHT);
+  motors[IDX_MOTOR_BACK_RIGHT] = new Motor(PIN_MOTOR_BACK_RIGHT, PIN_ENCODER_BACK_RIGHT);
+
+  // Parallel processing core - RGB LED Ring and control loop
+  multicore_launch_core1(core1_entry);
+  
+  // Setup control loop timer
+  if (!add_repeating_timer_us(-MICROSECONDS / CONTROL_LOOP_HZ, trigger_control, NULL, &timer_control)) {
+    // printf("Failed to add control loop timer\n");
+    return 1;
+  }
+
+  // Setup LED Ring animation loop timer
+  if (!add_repeating_timer_us(-MICROSECONDS / LED_RING_HZ, trigger_led_ring, NULL, &timer_led_ring)) {
+    // printf("Failed to add led ring timer\n");
+    return 1;
+  }
+
+  // -------------------------
   // Setup micro-ROS
   rmw_uros_set_custom_transport(
       true, NULL, pico_serial_transport_open, pico_serial_transport_close,
       pico_serial_transport_write, pico_serial_transport_read);
 
-  // ROS2 Node
-  rcl_timer_t timer;
-  // rcl_timer_t timer_led_ring;
-  rcl_node_t node;
-  rcl_allocator_t allocator;
-  rclc_support_t support;
-  rclc_executor_t executor;
-
-  // Number of handles allowed in the executor (2 timer, 1 subscription)
-  // Make sure to update as more are added!
-  const size_t handles = 3;
-
   allocator = rcl_get_default_allocator();
   executor = rclc_executor_get_zero_initialized_executor();
 
   // Wait for agent successful ping for 2 minutes.
-  // Connect to agent and init node
-  // Check once and fail quickly if agent is not reachable to show error
-  // RCSOFTCHECK(rmw_uros_ping_agent(30, 1));
-
-  // Then retry until agent is reachable and fail hard
   RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
 
-  RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
-
   status.set(Status::Connected);
+
+  RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
   
   RCCHECK(rclc_node_init_default(&node, "deepdrive_micro_node", "", &support));
 
+  // TODO: Define topics in config
   // Publisher
   RCCHECK(rclc_publisher_init_default(
-      &publisher, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg, MecanumDriveControllerState),
+      &publisher_motor, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg, MecanumDriveControllerState),
       "deepdrive_micro/pulses"));
 
   // Timer
-  RCCHECK(rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(100),
+  RCCHECK(rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(1.0/CONTROL_LOOP_HZ*1000),
                                   timer_cb_general));
 
-  // LED Ring Timer
-  // RCCHECK(rclc_timer_init_default(&timer_led_ring, &support, RCL_MS_TO_NS(100),
-                                  // timer_cb_led_ring));
-
-  RCCHECK(rclc_executor_init(&executor, &support.context, handles, &allocator));
+  RCCHECK(rclc_executor_init(&executor, &support.context, uRosHandles, &allocator));
   
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-  // RCCHECK(rclc_executor_add_timer(&executor, &timer_led_ring));
 
-  // Subscriber
-  // ros2 topic pub --once deepdrive_micro/cmd std_msgs/msg/Int32 "{data:
-  // 65000}"
-  
-  // RCCHECK(rclc_subscription_init_best_effort(
-  //     &subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-  //     "deepdrive_micro/cmd"));
   RCCHECK(rclc_subscription_init_best_effort(
-      &subscriber, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg, MecanumDriveControllerState),
+      &subscriber_motor, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg, MecanumDriveControllerState),
       "deepdrive_micro/cmd"));
+  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber_motor, &msg_in_motor, &subscription_motor_callback, ON_NEW_DATA));
   
-  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &cmd,
-                                         &subscription_callback, ON_NEW_DATA));
-  
-  RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
   while (true) {
     #ifdef WATCHDOG_ENABLED
     watchdog_update();
     #endif
     
-    RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
+    RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1000)));
+    // RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
   }
   // rclc_executor_spin(&executor);
 
-  RCCHECK(rcl_publisher_fini(&publisher, &node));
-  RCCHECK(rcl_subscription_fini(&subscriber, &node));
+  RCCHECK(rcl_publisher_fini(&publisher_motor, &node));
+  RCCHECK(rcl_subscription_fini(&subscriber_motor, &node));
   RCCHECK(rcl_node_fini(&node));
 
   return 0;

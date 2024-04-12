@@ -18,6 +18,8 @@ add_executable(deepdrive_micro
     status.cpp
     motor.cpp
     imu.cpp
+    pid.cpp
+    analog_sensors.cpp
 )
 
 # To add to this, here are examples: `cat /usr/src/pico-sdk/test/kitchen_sink/CMakeLists.txt | grep pwm`
@@ -31,6 +33,7 @@ target_link_libraries(deepdrive_micro
     hardware_pwm
     hardware_clocks
     pico_multicore
+    hardware_adc
 )
 
 if (TARGET pico_cyw43_arch)

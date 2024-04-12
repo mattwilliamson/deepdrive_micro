@@ -1,28 +1,5 @@
 #include "pid.h"
 
-/**
- * @brief Constructor for the PIDController class.
- *
- * @param min The minimum output value of the PID controller.
- * @param max The maximum output value of the PID controller.
- * @param Kd The derivative gain of the PID controller.
- * @param Kp The proportional gain of the PID controller.
- * @param Ki The integral gain of the PID controller.
- */
-PIDController::PIDController(double max,
-                                double min,
-                                double Kp,
-                                double Kd,
-                                double Ki) : min_(min),
-                                            max_(max),
-                                            Kp_(Kp),
-                                            Ki_(Ki),
-                                            Kd_(Kd)
-{
-    pre_error_ = 0;
-    integral_ = 0;
-    setpoint_ = 0;
-}
 
 
 

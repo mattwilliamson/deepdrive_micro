@@ -94,21 +94,35 @@ back_left_wheel_velocity    10491
 back_right_wheel_velocity   8406
 front_right_wheel_velocity  10891
 
+### 60s @ 32767
+front_left_wheel_velocity   87269
+back_left_wheel_velocity    87962
+back_right_wheel_velocity   87201
+front_right_wheel_velocity  89018
+
 
 # TODO
-pid controller on mcu
-max acceleration (curves?)
-control loop in second core with led ring
-logging
-see if logs go to agent - no
+check ADC_VREF == 3.3 V
+tune pid controller - output speed might not be correct (might not be estimating speed accurately)
+if a motor is not getting any pulses after some time, raise some kind of error and stop
+back right encoder is giving some noisy pulse counts (there was a solder bridge)
 diagnostic messages
 param server for pid, speed, etc
-convert speed to radians/s
-param for loop hz
+convert speed to m/s for cmd
 second publisher for actual speed or put in diagnostic?
+joint state on mcu?
 do odom on mcu?
-back right encoder is not working
 use flash to save params
 use mutext to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
-adc for battery
-interpolators for counting pulses?
+
+interpolators for counting pulses? or pio
+pid controller on interpolator?
+
+future: use pwm to measure pulses
+
+adc_ref not connected.
+ADC_AVDD should be decoupled with a 100nF capacitor close to the chip’s ADC_AVDD pin.
+ADC_AVDD can use from the same power source as the digital IO supply (IOVDD)
+IOVDD, VREG_VIN = 3.3v 
+reset button on pin 30 RUN that pulls it low
+Driving high the SMPS mode pin (GPIO23), to force the power supply into PWM mode, can greatly reduce the inherent ripple of the SMPS at light load, and therefore the ripple on the ADC supply. This does reduce the power efficiency of the board at light load, so the low-power PFM mode can be re-enabled between infrequent ADC measurements by driving GPIO23 low once more. See Section 4.4.

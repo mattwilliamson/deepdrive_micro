@@ -22,7 +22,11 @@ extern "C" {
     // #include <std_msgs/msg/int32.h>
     // #include <std_msgs/msg/int32_multi_array.h>
     #include <control_msgs/msg/mecanum_drive_controller_state.h>
-
+    #include <diagnostic_msgs/msg/diagnostic_status.h>
+    #include <sensor_msgs/msg/battery_state.h>
+    #include <sensor_msgs/msg/joint_state.h>
+    #include <rosidl_runtime_c/string.h>
+    #include <micro_ros_utilities/string_utilities.h>
 
     // /*
     //  * PICO HEADERS
@@ -48,18 +52,20 @@ extern "C" {
 #include "status.h"
 #include "led_ring.h"
 #include "motor.h"
+#include "analog_sensors.h"
 
 #define RCCHECK(fn)                                                            \
   {                                                                            \
     rcl_ret_t temp_rc = fn;                                                    \
     if ((temp_rc != RCL_RET_OK)) {                                             \
-      status.set(Status::Error);                                         \
+      status.set(Status::Error);                                               \
       sleep_ms(10000);                                                         \
       printf("Failed status on line %d: (error code: %d) Aborting.\n",         \
              __LINE__, (int)temp_rc);                                          \
       return 1;                                                                \
     }                                                                          \
   }
+
 #define RCSOFTCHECK(fn)                                                        \
   {                                                                            \
     rcl_ret_t temp_rc = fn;                                                    \
@@ -68,5 +74,14 @@ extern "C" {
       sleep_ms(10000);                                                         \
       printf("Failed status on line %d: (error code: %d). Continuing.\n",      \
              __LINE__, (int)temp_rc);                                          \
+    } else {                                                                   \
+      status.set(Status::Success);                                             \
     }                                                                          \
   }
+
+#define MICROSECONDS 1000000
+
+char JOINT_NAME_FRONT_LEFT[] =    "wheel_front_left_joint";
+char JOINT_NAME_BACK_LEFT[] =     "wheel_back_left_joint";
+char JOINT_NAME_FRONT_RIGHT[] =   "wheel_front_right_joint";
+char JOINT_NAME_BACK_RIGHT[] =    "wheel_back_right_joint";
