@@ -126,3 +126,5 @@ ADC_AVDD can use from the same power source as the digital IO supply (IOVDD)
 IOVDD, VREG_VIN = 3.3v 
 reset button on pin 30 RUN that pulls it low
 Driving high the SMPS mode pin (GPIO23), to force the power supply into PWM mode, can greatly reduce the inherent ripple of the SMPS at light load, and therefore the ripple on the ADC supply. This does reduce the power efficiency of the board at light load, so the low-power PFM mode can be re-enabled between infrequent ADC measurements by driving GPIO23 low once more. See Section 4.4.
+
+change to bno085 - add reset pin

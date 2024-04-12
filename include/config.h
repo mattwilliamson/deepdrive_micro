@@ -143,4 +143,20 @@
 // ----------------------------------
 
 
+
+// ----------------------------------
+// START IMU
+// ----------------------------------
+
+#define IMU_ENABLED 1
+#define IMU_I2C_SPEED 400 * 1000
+#define IMU_I2C_SDA 4
+#define IMU_I2C_SCL 5
+#define IMU_I2C {i2c0_hw, false}
+#define IMU_ADDRESS 0x68
+#define IMU_ADDRESS_MAG 0x0C
+
+// END IMU
+// ----------------------------------
+
 #endif // CONFIG_H

@@ -1,4 +1,7 @@
 #include "main.h"
+#include "imu.h"
+// #include "imu/driver_mpu9250_interface.h"
+// #include "imu/driver_mpu9250_dmp.h"
 
 // Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 4 publisher)
 const size_t uRosHandles = 6;
@@ -24,6 +27,8 @@ control_msgs__msg__MecanumDriveControllerState msg_in_motor;
 LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
 StatusManager& status = StatusManager::getInstance();
 std::vector<Motor*> motors(MOTOR_COUNT);
+
+IMU imu = IMU();
 
 // TODO: Do I need to publish trajectory_msgs__msg__JointTrajectoryPoint ?
 
@@ -198,11 +203,11 @@ void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
   //     motor->setSpeed(0);
   //   }
   //   status.set(Status::Error);
-  //   printf("micro-ROS agent has stopped. Exiting...\n");
+  //   printf("micro-ROS agent has stopped. Exiting...\r\n");
   //   sleep_ms(1000);
   //   exit(1);
   // } else {
-  //   printf("Agent is still up!\n\n");
+  //   printf("Agent is still up!\r\n\r\n");
   // }
 
   // TODO: Move some of these to config
@@ -234,7 +239,7 @@ void setup_watchdog() {
 #ifdef WATCHDOG_ENABLED
   // We rebooted because we got stuck or something
   if (watchdog_caused_reboot()) {
-    // printf("Rebooted by Watchdog!\n");
+    // printf("Rebooted by Watchdog!\r\n");
     status.set(STATUS_REBOOTED);
     sleep_ms(10000);
   }
@@ -245,7 +250,32 @@ void setup_watchdog() {
 #endif
 }
 
+
+
+#include "pico/stdlib.h"
+#include "pico/binary_info.h"
+#include "hardware/i2c.h"
+#include "imu.h"
+
+
 int main() {
+  stdio_init_all();
+  sleep_ms(10000);
+
+  if(imu.start() != 0) {
+    printf("IMU start failed\r\n");
+    return 1;
+  }
+
+  while(1) {
+    icm20984_data_t *d = imu.read();
+    printf("accel. x: %d, y: %d, z:%d\r\n", d->accel_raw[0], d->accel_raw[1], d->accel_raw[2]);
+    printf("gyro.  x: %d, y: %d, z:%d\r\n", d->gyro_raw[0], d->gyro_raw[1], d->gyro_raw[2]);
+    printf("mag.   x: %d, y: %d, z:%d\r\n", d->mag_raw[0], d->mag_raw[1], d->mag_raw[2]);
+    sleep_ms(1000);
+  }
+        
+
 
   // stdio_init_all(); // Called by uros
   setup_watchdog();
@@ -267,13 +297,13 @@ int main() {
   
   // Setup control loop timer
   if (!add_repeating_timer_us(-MICROSECONDS / CONTROL_LOOP_HZ, trigger_control, NULL, &timer_control)) {
-    // printf("Failed to add control loop timer\n");
+    // printf("Failed to add control loop timer\r\n");
     return 1;
   }
 
   // Setup LED Ring animation loop timer
   if (!add_repeating_timer_us(-MICROSECONDS / LED_RING_HZ, trigger_led_ring, NULL, &timer_led_ring)) {
-    // printf("Failed to add led ring timer\n");
+    // printf("Failed to add led ring timer\r\n");
     return 1;
   }
 
