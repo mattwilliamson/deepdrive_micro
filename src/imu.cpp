@@ -5,7 +5,8 @@ int8_t IMU::start() {
     i2c_init(&i2c_, speed_);
     gpio_set_function(i2c_sda_, GPIO_FUNC_I2C);
     gpio_set_function(i2c_scl_, GPIO_FUNC_I2C);
-    // Pullups?
+    gpio_pull_up(i2c_sda_);
+    gpio_pull_up(i2c_scl_);
 
     return icm20948_init(&config_);
 }

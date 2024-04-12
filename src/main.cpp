@@ -3,8 +3,8 @@
 // #include "imu/driver_mpu9250_interface.h"
 // #include "imu/driver_mpu9250_dmp.h"
 
-// Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 4 publisher)
-const size_t uRosHandles = 6;
+// Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 5 publisher)
+const size_t uRosHandles = 7;
 
 rcl_timer_t timer;
 rcl_node_t node;
@@ -15,20 +15,22 @@ rclc_executor_t executor;
 rcl_publisher_t publisher_motor;
 rcl_publisher_t publisher_battery;
 rcl_publisher_t publisher_join_state;
+rcl_publisher_t publisher_imu;
 
 control_msgs__msg__MecanumDriveControllerState mgs_out_motor;
 sensor_msgs__msg__BatteryState msg_out_battery;
 sensor_msgs__msg__JointState *msg_out_joint_state;
+sensor_msgs__msg__Imu *msg_out_imu;
 
 rcl_subscription_t subscriber_motor;
 control_msgs__msg__MecanumDriveControllerState msg_in_motor;
 // maybe switch to control_msgs__msg__SteeringControllerStatus
 
+IMU imu = IMU();
+
 LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
 StatusManager& status = StatusManager::getInstance();
 std::vector<Motor*> motors(MOTOR_COUNT);
-
-IMU imu = IMU();
 
 // TODO: Do I need to publish trajectory_msgs__msg__JointTrajectoryPoint ?
 
@@ -177,6 +179,59 @@ void publish_joint_state() {
   RCSOFTCHECK(rcl_publish(&publisher_join_state, msg_out_joint_state, NULL));
 }
 
+
+int init_imu()  {
+  RCCHECK(rclc_publisher_init_default(
+      &publisher_imu, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+      "deepdrive_micro/imu"));
+
+  if(imu.start() != 0) {
+    printf("IMU start failed\r\n");
+    return 1;
+  }
+
+   msg_out_imu = sensor_msgs__msg__Imu__create();
+   msg_out_imu->header.frame_id = micro_ros_string_utilities_init("base_link");
+  //  rosidl_runtime_c__float64__Sequence__init(&msg_out_imu->effort, MOTOR_COUNT);
+
+
+  return 0;
+}
+
+void publish_imu() {
+  sleep_ms(10);
+  msg_out_imu->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
+  msg_out_imu->header.stamp.nanosec = rmw_uros_epoch_nanos();
+
+  icm20984_data_t *d = imu.read();
+  sleep_ms(10);
+  // printf("accel. x: %d, y: %d, z:%d\r\n", d->accel_raw[0], d->accel_raw[1], d->accel_raw[2]);
+  // printf("gyro.  x: %d, y: %d, z:%d\r\n", d->gyro_raw[0], d->gyro_raw[1], d->gyro_raw[2]);
+  // printf("mag.   x: %d, y: %d, z:%d\r\n", d->mag_raw[0], d->mag_raw[1], d->mag_raw[2]);
+
+  // TODO: Covariance
+  // TODO: Switch these to real values
+  // msg_out_imu->linear_acceleration_covariance
+  msg_out_imu->linear_acceleration.x = d->accel_raw[0];
+  msg_out_imu->linear_acceleration.y = d->accel_raw[1];
+  msg_out_imu->linear_acceleration.z = d->accel_raw[2];
+
+  // msg_out_imu->angular_velocity_covariance = 0.001;
+  msg_out_imu->angular_velocity.x = d->gyro_raw[0];
+  msg_out_imu->angular_velocity.y = d->gyro_raw[1];
+  msg_out_imu->angular_velocity.z = d->gyro_raw[2];
+
+  // TODO: Publish mag
+  // msg_out_imu->orientation_covariance = 0.001;
+  msg_out_imu->orientation.x = d->mag_raw[0];
+  msg_out_imu->orientation.y = d->mag_raw[1];
+  msg_out_imu->orientation.z = d->mag_raw[2];
+  
+  RCSOFTCHECK(rcl_publish(&publisher_imu, msg_out_imu, NULL));
+}
+
+
+
 void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
     mgs_out_motor.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedMetersPerSecond();
     mgs_out_motor.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedMetersPerSecond();
@@ -214,6 +269,8 @@ void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
   publish_battery();
 
   publish_joint_state();
+
+  publish_imu();
 }
 
 // void timer_cb_led_ring(rcl_timer_t *timer, int64_t last_call_time) {
@@ -259,23 +316,6 @@ void setup_watchdog() {
 
 
 int main() {
-  stdio_init_all();
-  sleep_ms(10000);
-
-  if(imu.start() != 0) {
-    printf("IMU start failed\r\n");
-    return 1;
-  }
-
-  while(1) {
-    icm20984_data_t *d = imu.read();
-    printf("accel. x: %d, y: %d, z:%d\r\n", d->accel_raw[0], d->accel_raw[1], d->accel_raw[2]);
-    printf("gyro.  x: %d, y: %d, z:%d\r\n", d->gyro_raw[0], d->gyro_raw[1], d->gyro_raw[2]);
-    printf("mag.   x: %d, y: %d, z:%d\r\n", d->mag_raw[0], d->mag_raw[1], d->mag_raw[2]);
-    sleep_ms(1000);
-  }
-        
-
 
   // stdio_init_all(); // Called by uros
   setup_watchdog();
@@ -324,6 +364,8 @@ int main() {
   RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
   
   RCCHECK(rclc_node_init_default(&node, "deepdrive_micro_node", "", &support));
+
+  init_imu();
 
   // TODO: Define topics in config
   // Publisher

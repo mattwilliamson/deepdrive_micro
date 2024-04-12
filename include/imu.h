@@ -2,6 +2,8 @@
 
 #include "config.h"
 
+// https://invensense.tdk.com/download-pdf/icm-20948-datasheet/
+
 extern "C" {
     #include "hardware/i2c.h"
     #include "pico-icm20948.h"
