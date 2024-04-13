@@ -3,8 +3,8 @@
 // #include "imu/driver_mpu9250_interface.h"
 // #include "imu/driver_mpu9250_dmp.h"
 
-// Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 5 publisher)
-const size_t uRosHandles = 7;
+// Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 6 publisher)
+const size_t uRosHandles = 9;
 
 rcl_timer_t timer;
 rcl_node_t node;
@@ -16,11 +16,13 @@ rcl_publisher_t publisher_motor;
 rcl_publisher_t publisher_battery;
 rcl_publisher_t publisher_join_state;
 rcl_publisher_t publisher_imu;
+rcl_publisher_t publisher_mag;
 
 control_msgs__msg__MecanumDriveControllerState mgs_out_motor;
 sensor_msgs__msg__BatteryState msg_out_battery;
 sensor_msgs__msg__JointState *msg_out_joint_state;
 sensor_msgs__msg__Imu *msg_out_imu;
+sensor_msgs__msg__MagneticField *msg_out_mag;
 
 rcl_subscription_t subscriber_motor;
 control_msgs__msg__MecanumDriveControllerState msg_in_motor;
@@ -185,49 +187,82 @@ int init_imu()  {
       &publisher_imu, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
       "deepdrive_micro/imu"));
 
+  RCCHECK(rclc_publisher_init_default(
+    &publisher_mag, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, MagneticField),
+    "deepdrive_micro/mag"));
+
   if(imu.start() != 0) {
     printf("IMU start failed\r\n");
     return 1;
   }
 
-   msg_out_imu = sensor_msgs__msg__Imu__create();
-   msg_out_imu->header.frame_id = micro_ros_string_utilities_init("base_link");
-  //  rosidl_runtime_c__float64__Sequence__init(&msg_out_imu->effort, MOTOR_COUNT);
+  // Calibrate the IMU
+  imu.calibrate();
+  // TODO: Save the compass calibration to EEPROM or flash or something and expose a service to trigger it
 
+   msg_out_imu = sensor_msgs__msg__Imu__create();
+   msg_out_imu->header.frame_id = micro_ros_string_utilities_init(IMU_FRAME);
+
+  msg_out_mag = sensor_msgs__msg__MagneticField__create();
+  msg_out_mag->header.frame_id = micro_ros_string_utilities_init(IMU_FRAME);
 
   return 0;
 }
 
 void publish_imu() {
-  sleep_ms(10);
+  int8_t success = imu.read();
+
+  Vector3 accel = imu.getAccel();
+
+  msg_out_imu->linear_acceleration.x = accel.x;
+  msg_out_imu->linear_acceleration.y = accel.y;
+  msg_out_imu->linear_acceleration.z = accel.z;
+
+  msg_out_imu->linear_acceleration_covariance[0] = 0.001;
+  msg_out_imu->linear_acceleration_covariance[4] = 0.001;
+  msg_out_imu->linear_acceleration_covariance[8] = 0.001;
+
+  Vector3 gyro = imu.getGyro();
+
+  msg_out_imu->angular_velocity.x = gyro.x;
+  msg_out_imu->angular_velocity.y = gyro.y;
+  msg_out_imu->angular_velocity.z = gyro.z;
+
+  msg_out_imu->angular_velocity_covariance[0] = 0.001;
+  msg_out_imu->angular_velocity_covariance[4] = 0.001;
+  msg_out_imu->angular_velocity_covariance[8] = 0.001;
+
+  Quaternion orientation = imu.getOrientation();
+
+  msg_out_imu->orientation.x = orientation.x;
+  msg_out_imu->orientation.y = orientation.y;
+  msg_out_imu->orientation.z = orientation.z;
+  msg_out_imu->orientation.w = orientation.w;
+
+  msg_out_imu->orientation_covariance[0] = 0.001;
+  msg_out_imu->orientation_covariance[4] = 0.001;
+  msg_out_imu->orientation_covariance[8] = 0.001;
+
   msg_out_imu->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
   msg_out_imu->header.stamp.nanosec = rmw_uros_epoch_nanos();
-
-  icm20984_data_t *d = imu.read();
-  sleep_ms(10);
-  // printf("accel. x: %d, y: %d, z:%d\r\n", d->accel_raw[0], d->accel_raw[1], d->accel_raw[2]);
-  // printf("gyro.  x: %d, y: %d, z:%d\r\n", d->gyro_raw[0], d->gyro_raw[1], d->gyro_raw[2]);
-  // printf("mag.   x: %d, y: %d, z:%d\r\n", d->mag_raw[0], d->mag_raw[1], d->mag_raw[2]);
-
-  // TODO: Covariance
-  // TODO: Switch these to real values
-  // msg_out_imu->linear_acceleration_covariance
-  msg_out_imu->linear_acceleration.x = d->accel_raw[0];
-  msg_out_imu->linear_acceleration.y = d->accel_raw[1];
-  msg_out_imu->linear_acceleration.z = d->accel_raw[2];
-
-  // msg_out_imu->angular_velocity_covariance = 0.001;
-  msg_out_imu->angular_velocity.x = d->gyro_raw[0];
-  msg_out_imu->angular_velocity.y = d->gyro_raw[1];
-  msg_out_imu->angular_velocity.z = d->gyro_raw[2];
-
-  // TODO: Publish mag
-  // msg_out_imu->orientation_covariance = 0.001;
-  msg_out_imu->orientation.x = d->mag_raw[0];
-  msg_out_imu->orientation.y = d->mag_raw[1];
-  msg_out_imu->orientation.z = d->mag_raw[2];
   
   RCSOFTCHECK(rcl_publish(&publisher_imu, msg_out_imu, NULL));
+
+  // Magnetometer
+  Vector3 mag = imu.getMag();
+
+  msg_out_mag->magnetic_field.x = mag.x;
+  msg_out_mag->magnetic_field.y = mag.y;
+  msg_out_mag->magnetic_field.z = mag.z;
+
+  msg_out_mag->magnetic_field_covariance[0] = 0.001;
+  msg_out_mag->magnetic_field_covariance[4] = 0.001;
+  msg_out_mag->magnetic_field_covariance[8] = 0.001;
+
+  msg_out_mag->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
+  msg_out_mag->header.stamp.nanosec = rmw_uros_epoch_nanos();
+
+  RCSOFTCHECK(rcl_publish(&publisher_mag, msg_out_mag, NULL));
 }
 
 

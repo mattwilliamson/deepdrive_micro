@@ -6,6 +6,8 @@
 #include "hardware/i2c.h"
 #include "icm20948-register.h"
 
+const uint16_t I2C_TIMEOUT = 1000;
+
 typedef struct icm20948_config {
     // usual addr
     // addr_accel_gyro:  0x68

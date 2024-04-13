@@ -1,5 +1,8 @@
 #include "pico-icm20948.h"
 
+// TODO: Error handling and timeouts with i2c_write_timeout_us and i2c_read_timeout_us
+// https://cec-code-lab.aps.edu/robotics2/resources/pico-c-api/group__hardware__i2c.html#ga0abb49ca0282530c2655f188b72eb653
+
 // "static" with function(s) means not to tell these functions to linker
 // so, we can't call these function from other source files.
 
@@ -240,9 +243,9 @@ void icm20948_read_cal_accel(icm20948_config_t *config, int16_t accel[3], int16_
 void icm20948_cal_mag_simple(icm20948_config_t *config, int16_t mag_bias[3]) {
     int16_t buf[3] = {0}, max[3] = {0}, min[3] = {0};
 #ifndef NDEBUG
-    printf("mag calibration: \nswing sensor for 360 deg\n");
+    printf("mag calibration: \r\nswing sensor for 360 deg\n");
 #endif
-    for (uint8_t i = 0; i < 1000; i++) {
+    for (uint16_t i = 0; i < 1000; i++) {
         icm20948_read_raw_mag(config, buf);
         for (uint8_t j = 0; j < 3; j++) {
             if (buf[j] > max[j]) max[j] = buf[j];

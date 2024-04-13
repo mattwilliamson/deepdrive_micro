@@ -26,6 +26,7 @@ extern "C" {
     #include <sensor_msgs/msg/battery_state.h>
     #include <sensor_msgs/msg/joint_state.h>
     #include <sensor_msgs/msg/imu.h>
+    #include <sensor_msgs/msg/magnetic_field.h>
     #include <rosidl_runtime_c/string.h>
     #include <micro_ros_utilities/string_utilities.h>
     #include <rosidl_runtime_c/string_functions.h>

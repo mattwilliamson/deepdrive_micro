@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define NDEBUG
+
 // deepdrive_micro/pulses
 // deepdrive_micro/cmd
 
@@ -155,6 +157,8 @@
 #define IMU_I2C {i2c0_hw, false}
 #define IMU_ADDRESS 0x68
 #define IMU_ADDRESS_MAG 0x0C
+
+#define IMU_FRAME "base_link"
 
 // END IMU
 // ----------------------------------

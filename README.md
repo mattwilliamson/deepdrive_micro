@@ -102,29 +102,39 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-check ADC_VREF == 3.3 V
-tune pid controller - output speed might not be correct (might not be estimating speed accurately)
-if a motor is not getting any pulses after some time, raise some kind of error and stop
-back right encoder is giving some noisy pulse counts (there was a solder bridge)
-diagnostic messages
-param server for pid, speed, etc
-convert speed to m/s for cmd
-second publisher for actual speed or put in diagnostic?
-joint state on mcu?
-do odom on mcu?
-use flash to save params
-use mutext to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
+- timeout i2c for imu so it doesn't freeze everything
+- power on self test
+- scaling imu output
+- publish magnetometer
+- covariance of imu message
+- refactor publishers into separate files
+- refactor pid controller
+- publish odom
+- imu is sampling at 100hz, but our control loop is 50hz
+- adc_ref not connected.
+- add icm20948 to pcb
+- calibrate imu, magenetic declination, madgwick
+- check ADC_VREF == 3.3 V
+- tune pid controller - output speed might not be correct (might not be estimating speed accurately)
+- if a motor is not getting any pulses after some time, raise some kind of error and stop
+- back right encoder is giving some noisy pulse counts (there was a solder bridge)
+- diagnostic messages
+- param server for pid, speed, etc
+- convert speed to m/s for cmd
+- second publisher for actual speed or put in diagnostic?
+- joint state on mcu?
+- do odom on mcu?
+- use flash to save params
+- use mutext to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
 
-interpolators for counting pulses? or pio
-pid controller on interpolator?
+- interpolators for counting pulses? or pio
+- pid controller on interpolator?
 
-future: use pwm to measure pulses
+- future: use pwm to measure pulses
 
-adc_ref not connected.
-ADC_AVDD should be decoupled with a 100nF capacitor close to the chip’s ADC_AVDD pin.
-ADC_AVDD can use from the same power source as the digital IO supply (IOVDD)
-IOVDD, VREG_VIN = 3.3v 
-reset button on pin 30 RUN that pulls it low
-Driving high the SMPS mode pin (GPIO23), to force the power supply into PWM mode, can greatly reduce the inherent ripple of the SMPS at light load, and therefore the ripple on the ADC supply. This does reduce the power efficiency of the board at light load, so the low-power PFM mode can be re-enabled between infrequent ADC measurements by driving GPIO23 low once more. See Section 4.4.
+- ADC_AVDD should be decoupled with a 100nF capacitor close to the chip’s ADC_AVDD pin.
+- ADC_AVDD can use from the same power source as the digital IO supply (IOVDD)
+- IOVDD, VREG_VIN = 3.3v 
+- reset button on pin 30 RUN that pulls it low
+- Driving high the SMPS mode pin (GPIO23), to force the power supply into PWM mode, can greatly reduce the - inherent ripple of the SMPS at light load, and therefore the ripple on the ADC supply. This does reduce the - power efficiency of the board at light load, so the low-power PFM mode can be re-enabled between infrequent ADC - measurements by driving GPIO23 low once more. See Section 4.4.
 
-change to bno085 - add reset pin
