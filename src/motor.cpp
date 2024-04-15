@@ -11,21 +11,18 @@ Motor::Motor(int pin, int encoderPin) {
     encoderPin_ = encoderPin;
     targetSpeed_ = 0;
     pulses_ = 0;
+    speed_ = 0;
+    dutyCycle_ = 0;
+    direction_ = 0;
 
     // https://pidexplained.com/how-to-tune-a-pid-controller/
     pidController_ = new PIDController(
-        -1.0 * MAX_INT, // Min
-        1.0 * MAX_INT, // Max
+        -MAX_SPEED_PPS, // Min
+        MAX_SPEED_PPS,  // Max
         PID_KP, // Kp
         PID_KI, // Ki
         PID_KD  // Kd
     );
-    
-    speed_ = 0;
-    dutyCycle_ = 0;
-    deltaPulses_ = 0;
-    actualSpeed_ = 0;
-    
     
     enable();
 }
@@ -51,56 +48,37 @@ void Motor::enable() {
         gpio_pull_down(encoderPin_);
         pulse_count_map[encoderPin_] = 0;
     }
-    // Arm the ESC
-    // pwm_set_chan_level(slice_, channel_, DUTY_CYCLE_MIN);
-    // sleep_ms(200);
-    // pwm_set_chan_level(slice_, channel_, DUTY_CYCLE_MAX);
-    // sleep_ms(200);
     
     // Stop the motor initially
     stop();
 }
 
 void Motor::readPulses() {
+    // TODO: Should I keep a couple loops worth and average the pulses?
+
     // TODO: See if we can make this atomic somehow to avoid missing pulses
     int newPulses = pulse_count_map[encoderPin_];
+
+    // Reset counter
     pulse_count_map[encoderPin_] = 0;
 
+    // Calculate speed for a whole second
+    speed_ = newPulses * CONTROL_LOOP_HZ * direction_;
+
     if (newPulses > 0 && speed_ != 0) {
-        // Accumulate the last pulses in case readPulses was read before the next PID controller calculation
-        if (speed_ < 0) {
-            pulses_ -= newPulses;
-            deltaPulses_ -= newPulses;
-            actualSpeed_ = -newPulses;
-        } else {
-            pulses_ += newPulses;
-            deltaPulses_ += newPulses;
-            actualSpeed_ = newPulses;
-        }
+        pulses_ += direction_ * newPulses;
     }
 }
 
 int32_t Motor::getPulses() {
-    // readPulses();
     return pulses_;
 }
 
-int32_t Motor::getDeltaPulses() {
-    return deltaPulses_;
-}
-
 int16_t Motor::calculatePid() {
-    // TODO: There's a lot of number conversion back and forth which can be reduced
-
-    // Get instantaneous pulses since last loop
+    // Get pulses since last loop and extrapolate speed
     readPulses();
 
-    // Convert deltaPulses_ to scale of -MAX_INT to +MAX_INT
-    double speed = pulsesToSpeed(deltaPulses_);
-    double output = pidController_->calculate(speed);
-
-    // Reset for next loop
-    deltaPulses_ = 0;
+    double output = pidController_->calculate(speed_);
 
     return output;
 }
@@ -109,34 +87,47 @@ void Motor::disable() {
     pwm_set_enabled(slice_, false);
 }
 
-void Motor::setSpeed(int16_t speed) {
-    // Read pulses before we potentially switch directions
-    // readPulses();
-    speed_ = speed;
+void Motor::setSpeedSignal(Pulses speed) {
+    // Set output from the PID controller to pwm out
+    speedSignal_ = speed;
 
-    // Convert max/min int to max/min duty cycle
-    dutyCycle_ = speedToDutyCycle(speed);
+    if (speed < 0) {
+        direction_ = -1;
+        
+    } else if (speed > 0) {
+        direction_ = 1;
+    } else {
+        direction_ = 0;
+    }
+
+    // Set the motor PWM duty cycle
+    dutyCycle_ = pulsesToDutyCycle(speedSignal_);
     pwm_set_chan_level(slice_, channel_, dutyCycle_);
 }
 
-int16_t Motor::getSpeedCmd() {
-    return speed_;
-}
-
-void Motor::setTargetSpeed(double targetSpeed) {
+void Motor::setTargetSpeed(Pulses targetSpeed) {
     targetSpeed_ = targetSpeed;
-    double targetSpeedSignal = metersToSpeed(targetSpeed);
-    pidController_->setSetpoint(targetSpeedSignal); // .05 -> 2812, .5 -> 28125
+    pidController_->setSetpoint(targetSpeed_);
 }
 
-double Motor::getTargetSpeed() {
+Pulses Motor::getTargetSpeed() {
     return targetSpeed_;
 }
 
-double Motor::getTargetSpeedMS() {
-    return speedToMS(targetSpeed_);
+void Motor::stop() {
+    setSpeedSignal(0);
 }
 
-void Motor::stop() {
-    setSpeed(0);
+void Motor::updateMotorOutput() {
+    // Calculate instantaneous speed and PID controller output
+    Pulses pid_output = calculatePid();
+
+    if (getTargetSpeed() == 0) {
+        // We're supposed to be stopped, so let reset it all
+        stop();
+        pidController_->reset();
+    } else {
+        // Set the motor speed to the output the PID controller calculated
+        setSpeedSignal(pid_output);
+    }
 }

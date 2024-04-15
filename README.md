@@ -31,6 +31,19 @@ sudo mount /mnt/sda1
 
 ## Build & Flash
 
+TODO: for param server .vscode/settings.json
+Param server is not working. Calling spin on the node returns an error
+```json
+    "cmake.configureArgs": [
+        "-DRMW_UXRCE_MAX_NODES=1",
+        "-DRMW_UXRCE_MAX_PUBLISHERS=21",
+        "-DRMW_UXRCE_MAX_SUBSCRIPTIONS=21",
+        "-DRMW_UXRCE_MAX_SERVICES=6",
+        "-DRMW_UXRCE_MAX_CLIENTS=0"
+    ],
+```
+`libmicroros/include/rmw_microxrcedds_c/config.h` should get updated when building
+
 ```sh
 make dockershell
 colcon build --cmake-args -DPICO_BOARD=pico_w --packages-select deepdrive_micro
@@ -56,10 +69,10 @@ Min/Max int16: +/- 32000
 
 ```sh
 ros2 topic pub --once deepdrive_micro/cmd control_msgs/msg/MecanumDriveControllerState '{
-    "front_left_wheel_velocity":  2000,
-    "front_right_wheel_velocity": 2000,
-    "back_left_wheel_velocity":   2000,
-    "back_right_wheel_velocity":  2000
+    "front_left_wheel_velocity":  0.5,
+    "front_right_wheel_velocity": 0.5,
+    "back_left_wheel_velocity":   0.5,
+    "back_right_wheel_velocity":  0.5
 }'
 
 ros2 topic pub --once deepdrive_micro/cmd control_msgs/msg/MecanumDriveControllerState '{
@@ -70,10 +83,10 @@ ros2 topic pub --once deepdrive_micro/cmd control_msgs/msg/MecanumDriveControlle
 }'
 
 ros2 topic pub --once deepdrive_micro/cmd control_msgs/msg/MecanumDriveControllerState '{
-    "front_left_wheel_velocity":  -2000,
-    "front_right_wheel_velocity": -2000,
-    "back_left_wheel_velocity":   -2000,
-    "back_right_wheel_velocity":  -2000
+    "front_left_wheel_velocity":  -0.5,
+    "front_right_wheel_velocity": -0.5,
+    "back_left_wheel_velocity":   -0.5,
+    "back_right_wheel_velocity":  -0.5
 }'
 ```
 
@@ -102,36 +115,41 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-- timeout i2c for imu so it doesn't freeze everything
-- power on self test
-- scaling imu output
-- publish magnetometer
-- covariance of imu message
+- diagnostic with timing for each core loop
+- convert joint state to radians for position
 - refactor publishers into separate files
 - refactor pid controller
 - publish odom
+- handle twist messages
+- icm20948 has a dmp onboard. use sparkfun portable library: https://github.com/sparkfun/SparkFun_ICM-20948_ArduinoLibrary
+    rewrite driver to use their sdk instead of generating a quaternion on cpu @ 100+hz
+- convert speed to m/s for cmd
+- subscribe to cmd commands
+- timeout i2c for imu so it doesn't freeze everything
+- power on self test
+- scaling imu output (Gs)
 - imu is sampling at 100hz, but our control loop is 50hz
 - adc_ref not connected.
 - add icm20948 to pcb
-- calibrate imu, magenetic declination, madgwick
 - check ADC_VREF == 3.3 V
-- tune pid controller - output speed might not be correct (might not be estimating speed accurately)
 - if a motor is not getting any pulses after some time, raise some kind of error and stop
-- back right encoder is giving some noisy pulse counts (there was a solder bridge)
 - diagnostic messages
 - param server for pid, speed, etc
-- convert speed to m/s for cmd
-- second publisher for actual speed or put in diagnostic?
 - joint state on mcu?
-- do odom on mcu?
+- publish temperature from imu?
 - use flash to save params
-- use mutext to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
+- use mutex to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
 
+
+
+### Motor Feedback Loop
 - interpolators for counting pulses? or pio
 - pid controller on interpolator?
+- back right encoder is giving some noisy pulse counts (there was a solder bridge)
+- tune pid controller - output speed might not be correct (might not be estimating speed accurately)
 
-- future: use pwm to measure pulses
 
+### ADC
 - ADC_AVDD should be decoupled with a 100nF capacitor close to the chip’s ADC_AVDD pin.
 - ADC_AVDD can use from the same power source as the digital IO supply (IOVDD)
 - IOVDD, VREG_VIN = 3.3v 

@@ -17,6 +17,14 @@
     "cmake.configureEnvironment": {
         "PICO_SDK_PATH": "${workspaceFolder}/pico-sdk"
     },
+    "cmake.configureArgs": [
+        "-DRMW_UXRCE_MAX_NODES=1",
+        "-DRMW_UXRCE_MAX_PUBLISHERS=21",
+        "-DRMW_UXRCE_MAX_SUBSCRIPTIONS=21",
+        "-DRMW_UXRCE_MAX_SERVICES=6",
+        "-DRMW_UXRCE_MAX_CLIENTS=1"
+    ],
+
     "files.associations": {
         ".env*": "dotenv",
         "pwm.h": "c",

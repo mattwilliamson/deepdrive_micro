@@ -1,16 +1,21 @@
 #include "main.h"
+
+#ifdef IMU_ENABLED
 #include "imu.h"
+#endif
+
 // #include "imu/driver_mpu9250_interface.h"
 // #include "imu/driver_mpu9250_dmp.h"
 
 // Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 6 publisher)
-const size_t uRosHandles = 9;
+const size_t uRosHandles = 11 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
 
 rcl_timer_t timer;
 rcl_node_t node;
 rcl_allocator_t allocator;
 rclc_support_t support;
 rclc_executor_t executor;
+rclc_parameter_server_t param_server;
 
 rcl_publisher_t publisher_motor;
 rcl_publisher_t publisher_battery;
@@ -28,10 +33,12 @@ rcl_subscription_t subscriber_motor;
 control_msgs__msg__MecanumDriveControllerState msg_in_motor;
 // maybe switch to control_msgs__msg__SteeringControllerStatus
 
+#ifdef IMU_ENABLED
 IMU imu = IMU();
+#endif
 
 LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
-StatusManager& status = StatusManager::getInstance();
+// status = StatusManager::getInstance();
 std::vector<Motor*> motors(MOTOR_COUNT);
 
 // TODO: Do I need to publish trajectory_msgs__msg__JointTrajectoryPoint ?
@@ -59,11 +66,6 @@ bool trigger_led_ring(repeating_timer_t *rt) {
 void core1_entry() {
   bool led_on = true;
 
-  #ifndef LED_RING_ENABLED
-  led_ring.off();
-  return;
-  #endif
-
   while (true) {
 
     // Control loop for motors
@@ -72,20 +74,13 @@ void core1_entry() {
 
       // Read any motor encoder pulses
       for (auto& motor : motors) {
-        // Calculate instantaneous speed and PID controller output
-        int16_t pid_output = motor->calculatePid();
-
-        if (motor->getTargetSpeed() == 0) {
-          // We're supposed to be stopped, so let reset it all
-          motor->stop();
-          motor->pidController_->reset();
-        } else {
-          // Set the motor speed to the output the PID controller calculated
-          motor->setSpeed(pid_output);
-        }
+        motor->updateMotorOutput();
       }
     }
 
+    #ifndef LED_RING_ENABLED
+    led_ring.off();
+    #else
     // LED Ring Loop
     if (render_led_ring) {
       render_led_ring = false;
@@ -93,10 +88,13 @@ void core1_entry() {
       led_ring.renderStatus(status.get());
       led_status_set(led_on);
     }
+    #endif
+
+
 
     // Sit tight until we have more work to do
-    // tight_loop_contents();
-    sleep_ms(1);
+    tight_loop_contents();
+    // sleep_ms(1);
   }
 }
 
@@ -171,11 +169,10 @@ void publish_joint_state() {
   msg_out_joint_state->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
   msg_out_joint_state->header.stamp.nanosec = rmw_uros_epoch_nanos();
 
-  // TODO: Actually populate
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    msg_out_joint_state->position.data[i] = motors[i]->getSpeedMetersPerSecond();
-    msg_out_joint_state->velocity.data[i] = motors[i]->getSpeedMetersPerSecond();
-    msg_out_joint_state->effort.data[i] = motors[i]->getSpeedMetersPerSecond();
+    msg_out_joint_state->position.data[i] = motors[i]->getPosition();
+    msg_out_joint_state->velocity.data[i] = motors[i]->getSpeedRadians();
+    // msg_out_joint_state->effort.data[i] = motors[i]->getSpeedMetersPerSecond();
   }
 
   RCSOFTCHECK(rcl_publish(&publisher_join_state, msg_out_joint_state, NULL));
@@ -183,6 +180,7 @@ void publish_joint_state() {
 
 
 int init_imu()  {
+  #ifdef IMU_ENABLED
   RCCHECK(rclc_publisher_init_default(
       &publisher_imu, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
       "deepdrive_micro/imu"));
@@ -206,10 +204,13 @@ int init_imu()  {
   msg_out_mag = sensor_msgs__msg__MagneticField__create();
   msg_out_mag->header.frame_id = micro_ros_string_utilities_init(IMU_FRAME);
 
+  #endif
+
   return 0;
 }
 
 void publish_imu() {
+  #ifdef IMU_ENABLED
   int8_t success = imu.read();
 
   Vector3 accel = imu.getAccel();
@@ -263,20 +264,24 @@ void publish_imu() {
   msg_out_mag->header.stamp.nanosec = rmw_uros_epoch_nanos();
 
   RCSOFTCHECK(rcl_publish(&publisher_mag, msg_out_mag, NULL));
+  #endif
 }
 
 
 
 void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
-    mgs_out_motor.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedMetersPerSecond();
-    mgs_out_motor.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedMetersPerSecond();
-    mgs_out_motor.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getSpeedMetersPerSecond();
-    mgs_out_motor.back_right_wheel_velocity = motors[IDX_MOTOR_BACK_RIGHT]->getSpeedMetersPerSecond();
+  mgs_out_motor.header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
+  mgs_out_motor.header.stamp.nanosec = rmw_uros_epoch_nanos();
 
-    // mgs_out_motor.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedcmd();
-    // mgs_out_motor.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedcmd();
-    // mgs_out_motor.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getSpeedcmd();
-    // mgs_out_motor.back_right_wheel_velocity = motors[IDX_MOTOR_BACK_RIGHT]->getSpeedcmd();
+  mgs_out_motor.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedMeters();
+  mgs_out_motor.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedMeters();
+  mgs_out_motor.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getSpeedMeters();
+  mgs_out_motor.back_right_wheel_velocity = motors[IDX_MOTOR_BACK_RIGHT]->getSpeedMeters();
+
+  // mgs_out_motor.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedSignal();
+  // mgs_out_motor.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedSignal();
+  // mgs_out_motor.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getSpeedSignal();
+  // mgs_out_motor.back_right_wheel_velocity = motors[IDX_MOTOR_BACK_RIGHT]->getSpeedSignal();
 
   // float temp = analog_sensors->getTemperature();
   // float battery = analog_sensors->getBatteryVoltage();
@@ -321,10 +326,10 @@ void subscription_motor_callback(const void *msgIn) {
   // Cast received message to used type
 
   const control_msgs__msg__MecanumDriveControllerState *m = (const control_msgs__msg__MecanumDriveControllerState *)msgIn;
-  motors[IDX_MOTOR_FRONT_LEFT]->setTargetSpeed(m->front_left_wheel_velocity);
-  motors[IDX_MOTOR_FRONT_RIGHT]->setTargetSpeed(m->front_right_wheel_velocity);
-  motors[IDX_MOTOR_BACK_LEFT]->setTargetSpeed(m->back_left_wheel_velocity);
-  motors[IDX_MOTOR_BACK_RIGHT]->setTargetSpeed(m->back_right_wheel_velocity);
+  motors[IDX_MOTOR_FRONT_LEFT]->setTargetSpeedMeters(m->front_left_wheel_velocity);
+  motors[IDX_MOTOR_FRONT_RIGHT]->setTargetSpeedMeters(m->front_right_wheel_velocity);
+  motors[IDX_MOTOR_BACK_LEFT]->setTargetSpeedMeters(m->back_left_wheel_velocity);
+  motors[IDX_MOTOR_BACK_RIGHT]->setTargetSpeedMeters(m->back_right_wheel_velocity);
 }
 
 void setup_watchdog() {
@@ -342,12 +347,43 @@ void setup_watchdog() {
 #endif
 }
 
+// Check if strings are the same
+bool isDoubleNamed(const Parameter * new_param, const char *name) {
+  if (new_param == NULL) {
+    return false;
+  }
+  return strcmp(new_param->name.data, name) == 0 && new_param->value.type == RCLC_PARAMETER_DOUBLE;
+}
 
+bool on_parameter_changed(const Parameter * old_param, const Parameter * new_param, void * context) {
+  (void) context;
+  if (new_param == NULL) {
+    return false;
+  }
+  
+  if (isDoubleNamed(new_param, PARAM_PID_KP)) {
+    for (auto &motor : motors) {
+      motor->pidController_->setKp(new_param->value.double_value);
+    }
+  } else if (isDoubleNamed(new_param, PARAM_PID_KI)) {
+    for (auto &motor : motors) {
+      motor->pidController_->setKi(new_param->value.double_value);
+    }
+  } else if (isDoubleNamed(new_param, PARAM_PID_KD)) {
+    for (auto &motor : motors) {
+      motor->pidController_->setKd(new_param->value.double_value);
+    }
+  } else {
+    // Unknown param
+    return false;
+  }
+  
+  // int64_t old;
+  // RCSOFTCHECK(rcl_timer_exchange_period(&timer, RCL_MS_TO_NS(new_param->value.integer_value), &old));
+  // printf("Publish rate %ld ms\n", new_param->value.integer_value);
+  return true;
+}
 
-#include "pico/stdlib.h"
-#include "pico/binary_info.h"
-#include "hardware/i2c.h"
-#include "imu.h"
 
 
 int main() {
@@ -389,7 +425,6 @@ int main() {
       pico_serial_transport_write, pico_serial_transport_read);
 
   allocator = rcl_get_default_allocator();
-  executor = rclc_executor_get_zero_initialized_executor();
 
   // Wait for agent successful ping for 2 minutes.
   RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
@@ -415,24 +450,62 @@ int main() {
   RCCHECK(rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(1.0/CONTROL_LOOP_HZ*1000),
                                   timer_cb_general));
 
+  // TODO: Figure out why param server isn't working
+  // https://github.com/micro-ROS/micro_ros_raspberrypi_pico_sdk/issues/925
+  // https://github.com/micro-ROS/micro_ros_raspberrypi_pico_sdk/blob/e315a376cacb80fe2bddaa2b3028425e0cfa4dd1/libmicroros/include/rmw_microxrcedds_c/config.h#L55
+  // https://micro.ros.org/docs/tutorials/programming_rcl_rclc/parameters/
+  // https://stackoverflow.com/questions/67563340/how-to-pass-command-line-arguments-to-cmake-in-vscode
+  // Create parameter service
+  // const rclc_parameter_options_t param_server_options = {
+  //     .notify_changed_over_dds = true,
+  //     .max_params = 3,
+  //     .allow_undeclared_parameters = true,
+  //     .low_mem_mode = true
+  //   };
+
+  // rclc_parameter_server_init_with_option(&param_server, &node, &param_server_options);
+  // rclc_parameter_server_init_default(&param_server, &node);
+
+  // TODO: Make handles variable
+  executor = rclc_executor_get_zero_initialized_executor();
   RCCHECK(rclc_executor_init(&executor, &support.context, uRosHandles, &allocator));
-  
+
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
 
   RCCHECK(rclc_subscription_init_best_effort(
       &subscriber_motor, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg, MecanumDriveControllerState),
       "deepdrive_micro/cmd"));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber_motor, &msg_in_motor, &subscription_motor_callback, ON_NEW_DATA));
+
+  // TODO: Fix this. Probably memory issue.
+  // RCCHECK(rclc_executor_add_parameter_server(&executor, &param_server, on_parameter_changed));
+
+  // // Add parameters
+  // rclc_add_parameter(&param_server, PARAM_PID_KP, RCLC_PARAMETER_DOUBLE);
+  // rclc_add_parameter(&param_server, PARAM_PID_KI, RCLC_PARAMETER_DOUBLE);
+  // rclc_add_parameter(&param_server, PARAM_PID_KD, RCLC_PARAMETER_DOUBLE);
+
+  // // Add parameters constraints
+  // rclc_add_parameter_description(&param_server, PARAM_PID_KP, "Motor PID Controller Kp value", "");
+  // rclc_add_parameter_description(&param_server, PARAM_PID_KI, "Motor PID Controller Ki value", "");
+  // rclc_add_parameter_description(&param_server, PARAM_PID_KD, "Motor PID Controller Kd value", "");
+
+  // // Set parameter initial values
+  // rclc_parameter_set_double(&param_server, PARAM_PID_KP, 0.1);
+  // rclc_parameter_set_double(&param_server, PARAM_PID_KI, 0.0);
+  // rclc_parameter_set_double(&param_server, PARAM_PID_KD, 0.0);
   
-  while (true) {
-    #ifdef WATCHDOG_ENABLED
-    watchdog_update();
-    #endif
+  // while (true) {
+  //   #ifdef WATCHDOG_ENABLED
+  //   watchdog_update();
+  //   #endif
     
-    RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1000)));
-    // RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
-  }
-  // rclc_executor_spin(&executor);
+  //   RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1)));
+  //   // rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
+  //   // RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
+  // }
+  
+  RCCHECK(rclc_executor_spin(&executor));
 
   RCCHECK(rcl_publisher_fini(&publisher_motor, &node));
   RCCHECK(rcl_subscription_fini(&subscriber_motor, &node));

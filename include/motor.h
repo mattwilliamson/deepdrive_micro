@@ -13,6 +13,12 @@ extern "C" {
     #include "pico/stdlib.h"
 }
 
+using Micrometers = int32_t;
+using Meters = double;
+using Pulses = int32_t;
+using DutyCycle = int16_t;
+using Radians = double;
+
 
 // Keep the intermediate pulse counts until the next read from the map
 static bool gpio_callbacks_configured = false; // Flag to check if the GPIO callbacks are configured
@@ -31,27 +37,28 @@ static volatile int pulse_count_map[30] = {}; // Map of pin number to pulse coun
  */
 class Motor {
 public:
-    // Arbitrary signal range for min-max motor speed, converted to PWM duty cycle downstream
-    static const int MIN_INT = std::numeric_limits<int16_t>::min() + 1; // +1 to avoid overflow
-    static const int MAX_INT = std::numeric_limits<int16_t>::max() - 1; // -1 to avoid overflow
-
+    static const int MICRO_METERS = 1e6;
+    static const int MILLI_METERS = 1e3;
     // 1000 us
-    static const int DUTY_CYCLE_MIN         = 490;
+    static const DutyCycle DUTY_CYCLE_MIN         = 490;
     // 1500 us
-    static const int DUTY_CYCLE_CENTER      = 735;
+    static const DutyCycle DUTY_CYCLE_CENTER      = 735;
     // 2000 us
-    static const int DUTY_CYCLE_MAX         = 980;
+    static const DutyCycle DUTY_CYCLE_MAX         = 980;
+
+    static const Micrometers WHEEL_DIAMETER = 89 * MICRO_METERS / MILLI_METERS; //diameter of the wheel in micrometers
+    static const Micrometers WHEEL_BASE = 240 * MICRO_METERS / MILLI_METERS; //distance between left and right wheels
 
     // TODO: There is some backlash in the motor, so we need to add some deadband (~696-688=8 pulses)
     // Forward: 34826/50 = 696 | 93156/127 = 734 | 34942/50.2 = 696 | 13988/20.1 = 695.5
     // Reverse: -34727/50.4 = -689 | -27862/40.5 = -687
-    static constexpr double PULSES_PER_REV = 696;
-    static constexpr double MAX_SPEED_PPS = 1450; // Pulses per second at full throttle
-    static constexpr double METERS_PER_REV = WHEEL_DIAMETER * M_PI / 1000.0;
-    static constexpr double REVS_PER_METER = 1.0 / METERS_PER_REV;
-    static constexpr double PULSES_PER_METER = PULSES_PER_REV * REVS_PER_METER;
-    static constexpr double MAX_SPEED_MS = MAX_SPEED_PPS / PULSES_PER_METER; // Meter per second at full throttle
-    static constexpr double MAX_PULSES_PER_LOOP = MAX_SPEED_PPS / CONTROL_LOOP_HZ;
+
+    static const Pulses PULSES_PER_REV = 696;
+    static const Pulses MAX_SPEED_PPS = 1450; // Pulses per second at full throttle (of the slowest motor)
+    static constexpr Micrometers UM_PER_REV = WHEEL_DIAMETER * M_PI;
+    static constexpr Pulses MAX_PULSES_PER_LOOP = MAX_SPEED_PPS / CONTROL_LOOP_HZ;
+    // static constexpr Pulses PULSES_PER_UM = PULSES_PER_REV / UM_PER_REV;
+    // static constexpr double MAX_SPEED_US_PER = MAX_SPEED_PPS / PULSES_PER_UM; // Meter per second at full throttle
 
     PIDController* pidController_;  // PID controller for the motor
 
@@ -86,51 +93,66 @@ public:
      * @param toMax The maximum value of the output range.
      * @return The mapped value.
      */
-    static double map(double value, double fromMin, double fromMax, double toMin, double toMax) {
+    static int32_t map(int32_t value, int32_t fromMin, int32_t fromMax, int32_t toMin, int32_t toMax) {
         // Calculate the range of the input and output values
-        double inputRange = fromMax - fromMin;
-        double outputRange = toMax - toMin;
+        int32_t inputRange = fromMax - fromMin;
+        int32_t outputRange = toMax - toMin;
 
         // Map the value from the input range to the output range
-        double mappedValue = ((value - fromMin) * outputRange) / inputRange + toMin;
+        int32_t mappedValue = ((value - fromMin) * outputRange) / inputRange + toMin;
 
         return mappedValue;
     }
 
-    // Convert meters per second to -MAX_INT to +MAX_INT
-    static double metersToSpeed(double metersPerSecond) {
-        return map(metersPerSecond, -MAX_SPEED_MS, MAX_SPEED_MS, -MAX_INT, MAX_INT);
+    // Convert pulses/sec to max/min duty cycle
+    static DutyCycle pulsesToDutyCycle(Pulses pulsesPerSecond) {
+        return map(pulsesPerSecond, -MAX_SPEED_PPS, MAX_SPEED_PPS, DUTY_CYCLE_MIN, DUTY_CYCLE_MAX);
     }
 
-    // Convert max/min int to max/min duty cycle
-    static double speedToDutyCycle(double speed) {
-        return map(speed, MIN_INT, MAX_INT, DUTY_CYCLE_MIN, DUTY_CYCLE_MAX);
+    // Convert Micrometers to pulses
+    static Pulses micrometersToPulses(Micrometers uM) {
+        return uM * PULSES_PER_REV / UM_PER_REV;
     }
 
-    // Convert max/min int to meters per second
-    static double speedToMS(double speed) {
-        return map(speed, -MAX_INT, MAX_INT, -MAX_SPEED_MS, MAX_SPEED_MS);
+    // Convert pulses to micrometers
+    static Micrometers pulsesToMicrometers(Pulses pulses) {
+        // 550
+        return pulses * UM_PER_REV / PULSES_PER_REV;
     }
-
-    // Convert deltaPulses_ to scale of -MAX_INT to +MAX_INT
-    static double pulsesToSpeed(double pulses) {
-        return map(pulses, -MAX_PULSES_PER_LOOP, MAX_PULSES_PER_LOOP, -MAX_INT, MAX_INT);
-    }
-
 
     /**
-     * @brief Get the speed of the motor commanded.
-     * @return The speed of the motor ranging from -MAX_INT to +MAX_INT.
+     * @brief Get the speed of the motor commanded by the PID controller.
+     * @return The speed of the motor in pulses per second.
      */
-    int16_t getSpeedCmd();
+    Pulses getSpeedSignal() {
+        return speedSignal_;
+    }
+
+    void setSpeedSignal(Pulses speedSignal);
 
     /**
-     * @brief Get the current actual speed of the motor in meters per second.
-     * @return The speed of the motor in meters per second.
+     * @brief Get the current actual speed of the motor in Micrometers per second.
+     * @return The speed of the motor in Micrometers per second.
      */
-    double getSpeedMetersPerSecond() {
-        // Convert the actualSpeed_ to meters per second
-        return actualSpeed_ / PULSES_PER_METER;
+    Micrometers getSpeedMicrometers() {
+        return pulsesToMicrometers(speed_);
+    }
+
+    /**
+     * @brief Get the current actual speed of the motor in Meters per second.
+     * @return The speed of the motor in Meters per second.
+     */
+    Meters getSpeedMeters() {
+        Meters um = pulsesToMicrometers(speed_);
+        return um / MICRO_METERS;
+    }
+
+    Radians getPosition() {
+        return pulsesToRadians(pulses_);
+    }
+
+    Radians getSpeedRadians() {
+        return pulsesToRadians(speed_);
     }
 
     /**
@@ -138,26 +160,25 @@ public:
      * @param speed The speed value to set for the motor.
      *        Negative values indicate reverse, 0 is stopped, and the maximum value is the maximum integer value (-/+32767).
      */
-    void setSpeed(int16_t speed);
+    // void setSpeed(Pulses speed);
 
     /**
      * @brief Set the target speed of the motor.
-     * @param targetSpeed The target speed value to set for the motor in meters per second.
+     * @param targetSpeed The target speed value to set for the motor in pulses per second.
      *        Negative values indicate reverse, 0 is stopped.
      */
-    void setTargetSpeed(double targetSpeed);
+    void setTargetSpeed(Pulses targetSpeed);
+
+    void setTargetSpeedMeters(Meters metersPerSecond) {
+        Pulses p = micrometersToPulses(metersPerSecond * MICRO_METERS);
+        setTargetSpeed(p);
+    }
 
     /**
      * @brief Get the target speed of the motor.
-     * @return The target speed of the motor ranging from -MAX_INT to +MAX_INT.
+     * @return The target speed of the motor in pulses/sec.
      */
-    double getTargetSpeed();
-
-    /**
-     * @brief Get the target speed of the motor.
-     * @return The target speed of the motor in meters per second.
-     */
-    double getTargetSpeedMS();
+    Pulses getTargetSpeed();
 
     /**
      * @brief Read the number of pulses counted by the motor.
@@ -171,30 +192,9 @@ public:
     int32_t getPulses();
 
     /**
-     * @brief Get the number of pulses counted by the motor since the last calculatePid call.
-     * @return The number of pulses counted by the motor since the last calculatePid call.
-     */
-    int32_t getDeltaPulses();
-
-    /**
-     * @brief Reset the number of pulses counted by the motor.
-     */
-    void resetDeltaPulses() {
-        deltaPulses_ = 0;
-    }
-    
-    /**
-     * @brief Get the actual speed of the motor in meters per second.
-     * @return The speed of the motor in meters per second.
-     */
-    double getActualSpeedMS() {
-        return actualSpeed_ / PULSES_PER_METER;
-    }
-
-    /**
      * @brief Calculate the PID controller output based on the desired speed and the current speed. 
      * Should only be called once per time period (control loop).
-     * @return The PID controller output in the range of MIN_INT to MAX_INT.
+     * @return The PID controller output in the range of pulses/sec.
      */
     int16_t calculatePid();
 
@@ -204,12 +204,9 @@ public:
      * @param pulses The number of pulses to convert.
      * @return The equivalent value in radians.
      */
-    static double pulsesToRadians(int32_t pulses) {
-        // Calculate the conversion factor from pulses to radians
+    static Radians pulsesToRadians(Pulses pulses) {
         double conversionFactor = 2.0 * M_PI / PULSES_PER_REV;
-        // Convert the pulses to radians
-        double radians = pulses * conversionFactor;
-        return radians;
+        return pulses * conversionFactor;
     }
 
     /**
@@ -217,25 +214,24 @@ public:
      * @param radians The number of radians to convert.
      * @return The equivalent value in pulses.
      */
-    static int32_t radiansToPulses(double radians) {
-        // Calculate the conversion factor from radians to pulses
+    static Pulses radiansToPulses(Radians radians) {
         double conversionFactor = PULSES_PER_REV / (2.0 * M_PI);
-        // Convert the radians to pulses
-        int32_t pulses = static_cast<int32_t>(radians * conversionFactor);
-        return pulses;
+        return radians * conversionFactor;
     }
+
+    void updateMotorOutput();
 
 private:
     int pin_;                       // Pin number of the motor
     int encoderPin_;                // Pin number of the motor encoder
-    int16_t speed_;                 // current speed command of the motor (in scale of -MAX_INT to +MAX_INT)
-    double targetSpeed_;            // desired speed of the motor M/s
-    double actualSpeed_;            // current speed of the motor in pulses
+    int16_t speed_;                 // current speed pulses/sec
+    int16_t speedSignal_;           // current speed signal pulses/sec
+    int16_t targetSpeed_;           // desired speed of the motor pulses/sec
+    int32_t pulses_;                // Number of pulses counted by the motor total
+    int dutyCycle_;                 // PWM duty cycle
     uint slice_;                    // PWM slice number
     uint channel_;                  // PWM channel number
-    int32_t pulses_;                // Number of pulses counted by the motor
-    int32_t deltaPulses_;           // Number of pulses counted by the motor in the last readPulses call
-    int dutyCycle_;                 // PWM duty cycle
+    int8_t direction_;              // Direction of the motor (1, 0, -1)
 };
 
 #endif // MOTOR_H

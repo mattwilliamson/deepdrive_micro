@@ -99,9 +99,6 @@
 // #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
 #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE
 
-#define WHEEL_DIAMETER 89 // MM
-#define WHEEL_BASE 240 // MM distance between left and right wheels
-
 
 
 // END WHEEL ENCODER PULSE COUNTER
@@ -115,13 +112,13 @@
 // ----------------------------------
 
 // Proportional
-#define PID_KP 0.045 // .9 oscillates, .04 isn't enough to drive at all
+#define PID_KP 0.95 // 1.9 starts to oscillate at .1m/s
 
 // Integral
-#define PID_KI 0.0001
+#define PID_KI 0.2 // 0.25 starts to oscillate
 
 // Derivative
-#define PID_KD 0.0
+#define PID_KD 0.2
 
 // END PID CONTROLLER
 // ----------------------------------
@@ -150,7 +147,7 @@
 // START IMU
 // ----------------------------------
 
-#define IMU_ENABLED 1
+// #define IMU_ENABLED 1
 #define IMU_I2C_SPEED 400 * 1000
 #define IMU_I2C_SDA 4
 #define IMU_I2C_SCL 5
