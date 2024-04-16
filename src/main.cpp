@@ -278,10 +278,10 @@ void publish_battery() {
   if (msg_out_battery.voltage > 2.0) {
     msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
     msg_out_battery.present = true;
-  } else if (msg_out_battery.voltage < 2.0) {
+  } else {
     msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_UNKNOWN;
     msg_out_battery.present = false;
-  } else
+  }
 
   RCSOFTCHECK(rcl_publish(&publisher_battery, &msg_out_battery, NULL));
 }
