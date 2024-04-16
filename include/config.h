@@ -17,7 +17,7 @@
 // ----------------------------------
 // GPIO 22
 
-// #define LED_RING_ENABLED 1
+#define LED_RING_ENABLED 1
 
 #ifdef PICO_DEFAULT_WS2812_PIN
 #define LED_RING_PIN PICO_DEFAULT_WS2812_PIN
@@ -158,6 +158,18 @@
 #define IMU_FRAME "base_link"
 
 // END IMU
+// ----------------------------------
+
+
+
+// ----------------------------------
+// START DIAGNOSTICS
+// ----------------------------------
+
+#define DIAGNOSTIC_FRAME "base_link"
+#define DIAGNOSTIC_COUNT 1
+
+// END DIAGNOSTICS
 // ----------------------------------
 
 #endif // CONFIG_H

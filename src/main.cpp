@@ -10,6 +10,9 @@
 // Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 6 publisher)
 const size_t uRosHandles = 11 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
 
+uint64_t core_start[2] = {0, 0};
+uint64_t core_elapsed[2] = {0, 0};
+
 rcl_timer_t timer;
 rcl_node_t node;
 rcl_allocator_t allocator;
@@ -22,12 +25,14 @@ rcl_publisher_t publisher_battery;
 rcl_publisher_t publisher_join_state;
 rcl_publisher_t publisher_imu;
 rcl_publisher_t publisher_mag;
+rcl_publisher_t publisher_diagnostic;
 
 control_msgs__msg__MecanumDriveControllerState mgs_out_motor;
 sensor_msgs__msg__BatteryState msg_out_battery;
 sensor_msgs__msg__JointState *msg_out_joint_state;
 sensor_msgs__msg__Imu *msg_out_imu;
 sensor_msgs__msg__MagneticField *msg_out_mag;
+diagnostic_msgs__msg__DiagnosticArray msg_out_diagnostic;
 
 rcl_subscription_t subscriber_motor;
 control_msgs__msg__MecanumDriveControllerState msg_in_motor;
@@ -67,6 +72,7 @@ void core1_entry() {
   bool led_on = true;
 
   while (true) {
+    core_start[1] = time_us_64();
 
     // Control loop for motors
     if (control_due) {
@@ -76,6 +82,7 @@ void core1_entry() {
       for (auto& motor : motors) {
         motor->updateMotorOutput();
       }
+      core_elapsed[1] = time_us_64() - core_start[1];
     }
 
     #ifndef LED_RING_ENABLED
@@ -87,9 +94,9 @@ void core1_entry() {
       led_on = !led_on;
       led_ring.renderStatus(status.get());
       led_status_set(led_on);
+      core_elapsed[1] = time_us_64() - core_start[1];
     }
     #endif
-
 
 
     // Sit tight until we have more work to do
@@ -115,6 +122,74 @@ void core1_entry() {
 //   RCCHECK(rcl_publisher_fini(&diagnostic_publisher, &node));
 // }
 
+// rclc_publisher_init_best_effort not currently working, but should enable async publishing
+
+int init_diagnostic() {
+  RCCHECK(rclc_publisher_init_default(
+      &publisher_diagnostic, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(diagnostic_msgs, msg, DiagnosticArray),
+      "/diagnostics"));
+
+  micro_ros_string_utilities_set(msg_out_diagnostic.header.frame_id, DIAGNOSTIC_FRAME);
+  diagnostic_msgs__msg__DiagnosticStatus__Sequence__init(&msg_out_diagnostic.status, DIAGNOSTIC_COUNT);
+
+  msg_out_diagnostic.status.data[0].hardware_id = micro_ros_string_utilities_init("deepdrive_micro");
+  msg_out_diagnostic.status.data[0].name = micro_ros_string_utilities_init("CPU Loop Time (us)");
+
+  // TODO: set error string from status
+  switch(status.get()) {
+    case Status::Connecting:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__WARN;
+      break;
+    case Status::Connected:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+      break;
+    case Status::Active:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+      break;
+    case Status::Error:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
+      break;
+    case Status::Rebooted:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
+      break;
+    default:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
+      break;
+  }
+  // msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+  
+  // TODO: Send Status
+  if (rmw_uros_epoch_synchronized()) {
+    msg_out_diagnostic.status.data[0].message = micro_ros_string_utilities_init("OK");
+  } else {
+    msg_out_diagnostic.status.data[0].message = micro_ros_string_utilities_init("Time not synchronized");
+  }
+  
+  diagnostic_msgs__msg__KeyValue__Sequence__init(&msg_out_diagnostic.status.data[0].values, 2);
+  msg_out_diagnostic.status.data[0].values.data[0].key = micro_ros_string_utilities_init("Core 0");
+  msg_out_diagnostic.status.data[0].values.data[1].key = micro_ros_string_utilities_init("Core 1");
+
+  return 0;
+}
+
+void publish_diagnostic() {
+  msg_out_diagnostic.header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
+  msg_out_diagnostic.header.stamp.nanosec = rmw_uros_epoch_nanos();
+
+  // Convert core_elapsed[0] to string
+  std::string core_elapsed_0_str = std::to_string(core_elapsed[0]);
+  // Assign the converted value to value.data
+  msg_out_diagnostic.status.data[0].values.data[0].value.data = const_cast<char*>(core_elapsed_0_str.c_str());
+
+  // Convert core_elapsed[1] to string
+  std::string core_elapsed_1_str = std::to_string(core_elapsed[1]);
+  // Assign the converted value to value.data
+  msg_out_diagnostic.status.data[0].values.data[1].value.data = const_cast<char*>(core_elapsed_1_str.c_str());
+
+  RCSOFTCHECK(rcl_publish(&publisher_diagnostic, &msg_out_diagnostic, NULL));
+}
+
+
 int init_battery() {
   RCCHECK(rclc_publisher_init_default(
       &publisher_battery, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState),
@@ -139,12 +214,24 @@ void publish_battery() {
 }
 
 int init_joint_state()  {
+  // static rmw_subscription_allocation_t * allocation;
+
   RCCHECK(rclc_publisher_init_default(
       &publisher_join_state, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
       "deepdrive_micro/joint_state"));
 
-   msg_out_joint_state = sensor_msgs__msg__JointState__create();
-   micro_ros_string_utilities_set(msg_out_joint_state->header.frame_id, "base_link");
+// #define ROSIDL_GET_MSG_TYPE_SUPPORT(PkgName, MsgSubfolder, MsgName) \
+//   ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME( \
+//     rosidl_typesupport_c, PkgName, MsgSubfolder, MsgName)()
+
+//   RCCHECK(rmw_init_subscription_allocation(
+//     ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
+//     ROSIDL_GET_SEQUENCE_BOUNDS(sensor_msgs, msg, JointState),
+//     &allocation
+//     ));
+
+  msg_out_joint_state = sensor_msgs__msg__JointState__create();
+  micro_ros_string_utilities_set(msg_out_joint_state->header.frame_id, "base_link");
   
   msg_out_joint_state->name = *rosidl_runtime_c__String__Sequence__create(MOTOR_COUNT);
   rosidl_runtime_c__float64__Sequence__init(&msg_out_joint_state->position, MOTOR_COUNT);
@@ -155,6 +242,7 @@ int init_joint_state()  {
   msg_out_joint_state->name.data[IDX_MOTOR_BACK_LEFT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_LEFT);
   msg_out_joint_state->name.data[IDX_MOTOR_FRONT_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_FRONT_RIGHT);
   msg_out_joint_state->name.data[IDX_MOTOR_BACK_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_RIGHT);
+
 
   return 0;
 }
@@ -174,7 +262,7 @@ void publish_joint_state() {
     msg_out_joint_state->velocity.data[i] = motors[i]->getSpeedRadians();
     // msg_out_joint_state->effort.data[i] = motors[i]->getSpeedMetersPerSecond();
   }
-
+  
   RCSOFTCHECK(rcl_publish(&publisher_join_state, msg_out_joint_state, NULL));
 }
 
@@ -270,9 +358,13 @@ void publish_imu() {
 
 
 void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
+  // TODO: Do some calculations in the other core and publish in this one
+  core_start[0] = time_us_64();
+
   mgs_out_motor.header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
   mgs_out_motor.header.stamp.nanosec = rmw_uros_epoch_nanos();
 
+  // 121us to calculate these
   mgs_out_motor.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedMeters();
   mgs_out_motor.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedMeters();
   mgs_out_motor.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getSpeedMeters();
@@ -290,6 +382,7 @@ void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
   // x -1479.795166015625
   // y 3.2991943359375
 
+  // 6700us for publisher_motor
   RCSOFTCHECK(rcl_publish(&publisher_motor, &mgs_out_motor, NULL));
 
   // if (RMW_RET_OK != rmw_uros_ping_agent(100, 1)) {
@@ -306,11 +399,19 @@ void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
   // }
 
   // TODO: Move some of these to config
+  
   publish_battery();
-
+  
+  // 13,470us to publish_joint_state
   publish_joint_state();
 
+
+  // 630us to publish_imu
   publish_imu();
+
+  core_elapsed[0] = time_us_64() - core_start[0];
+
+  publish_diagnostic();
 }
 
 // void timer_cb_led_ring(rcl_timer_t *timer, int64_t last_call_time) {
@@ -435,7 +536,8 @@ int main() {
   
   RCCHECK(rclc_node_init_default(&node, "deepdrive_micro_node", "", &support));
 
-  init_imu();
+  // Synchronize time with the agent
+  rmw_uros_sync_session(5000);
 
   // TODO: Define topics in config
   // Publisher
@@ -445,9 +547,13 @@ int main() {
 
   if (init_battery() != 0) {return 1;};
   if (init_joint_state() != 0) {return 1;};
+  init_imu();
+  init_diagnostic();
 
   // Timer
-  RCCHECK(rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(1.0/CONTROL_LOOP_HZ*1000),
+  // RCCHECK(rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(1.0/CONTROL_LOOP_HZ*1000),
+  //                                 timer_cb_general));
+  RCCHECK(rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(1000),
                                   timer_cb_general));
 
   // TODO: Figure out why param server isn't working

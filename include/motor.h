@@ -116,7 +116,6 @@ public:
 
     // Convert pulses to micrometers
     static Micrometers pulsesToMicrometers(Pulses pulses) {
-        // 550
         return pulses * UM_PER_REV / PULSES_PER_REV;
     }
 
@@ -125,6 +124,7 @@ public:
      * @return The speed of the motor in pulses per second.
      */
     Pulses getSpeedSignal() {
+        // TODO: Calculate upon update and just read
         return speedSignal_;
     }
 
@@ -135,6 +135,7 @@ public:
      * @return The speed of the motor in Micrometers per second.
      */
     Micrometers getSpeedMicrometers() {
+        // TODO: Calculate upon update and just read
         return pulsesToMicrometers(speed_);
     }
 
@@ -148,10 +149,12 @@ public:
     }
 
     Radians getPosition() {
+        // TODO: Calculate upon update and just read
         return pulsesToRadians(pulses_);
     }
 
     Radians getSpeedRadians() {
+        // TODO: Calculate upon update and just read
         return pulsesToRadians(speed_);
     }
 

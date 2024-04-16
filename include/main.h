@@ -20,6 +20,7 @@ extern "C" {
     #include <rclc/rclc.h>
     #include <rclc_parameter/rclc_parameter.h>
     #include <rmw_microros/rmw_microros.h>
+    #include <rosidl_runtime_c/sequence_bound.h>
     // #include <std_msgs/msg/int32.h>
     // #include <std_msgs/msg/int32_multi_array.h>
     #include <control_msgs/msg/mecanum_drive_controller_state.h>
@@ -28,6 +29,8 @@ extern "C" {
     #include <sensor_msgs/msg/joint_state.h>
     #include <sensor_msgs/msg/imu.h>
     #include <sensor_msgs/msg/magnetic_field.h>
+    #include <diagnostic_msgs/msg/diagnostic_array.h>
+    #include <diagnostic_msgs/msg/key_value.h>
     #include <rosidl_runtime_c/string.h>
     #include <micro_ros_utilities/string_utilities.h>
     #include <rosidl_runtime_c/string_functions.h>
