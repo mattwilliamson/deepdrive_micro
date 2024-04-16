@@ -136,7 +136,12 @@
 #define PIN_BATTERY_VOLTAGE_INPUT 0
 
 // Battery voltage reference
-#define BATTERY_VOLTAGE_REFERENCE 3.3f
+// ADC raw value = 2356, multimeter raw value = 11.08
+// ADC_REF = 3.277, Voltage Divider = 1.902, ADC Calculated =1.8839550018310547
+#define BATTERY_VOLTAGE_REFERENCE 3.277f
+#define BATTERY_VOLTAGE_CONVERSION 11.07f / 1.8839550018310547f
+#define BATTERY_CELLS 3
+#define BATTERY_CAPACITY 5200 // mAh
 
 // END BATTERY VOLTAGE
 // ----------------------------------

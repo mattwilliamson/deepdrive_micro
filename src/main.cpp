@@ -196,19 +196,23 @@ int init_battery() {
       "deepdrive_micro/battery"));
 
   micro_ros_string_utilities_set(msg_out_battery.location, "base_link");
+  micro_ros_string_utilities_set(msg_out_battery.location, "base_link");
   micro_ros_string_utilities_set(msg_out_battery.serial_number,  "1234567890");
+  msg_out_battery.design_capacity = BATTERY_CAPACITY;
+  msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
 
   return 0;
 }
 
 void publish_battery() {
+  // TODO: Do this in the other core
   msg_out_battery.voltage = analog_sensors->getBatteryVoltage();
   msg_out_battery.percentage = AnalogSensors::convertVoltageToPercentage(msg_out_battery.voltage);
-  msg_out_battery.design_capacity = 5200;
+  
   msg_out_battery.present = true;
   msg_out_battery.temperature = analog_sensors->getTemperature();
-  
-  msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
+
+  // msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
 
   RCSOFTCHECK(rcl_publish(&publisher_battery, &msg_out_battery, NULL));
 }

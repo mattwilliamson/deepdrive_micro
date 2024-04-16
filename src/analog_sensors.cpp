@@ -10,6 +10,8 @@ void AnalogSensors::init() {
 }
 
 float AnalogSensors::getBatteryVoltage() {
+    // TODO: Average battery over time
+    
     // Disable power saving
     gpio_put(23, 1);
     
@@ -19,13 +21,19 @@ float AnalogSensors::getBatteryVoltage() {
         uint16_t rawValue = adc_read();
         sum += rawValue;
     }
-    double averageVoltage = sum / NUM_SAMPLES; // Use the class constant for calculating the average voltage
+    double average_adc = sum / NUM_SAMPLES; // Use the class constant for calculating the average voltage
     const float conversion_factor = BATTERY_VOLTAGE_REFERENCE / (1 << 12);
-
+    float volts = conversion_factor * average_adc;
+    // ADC raw value = 2356, multimeter raw value = 11.08
+    // ADC_REF = 3.277, Voltage Divider = 1.902, ADC Calculated =1.8839550018310547
+    
+    // Convert from ADC voltage to battery voltage
+    float battery_volts = volts * BATTERY_VOLTAGE_CONVERSION;
+    
     // Enable power saving
-    gpio_put(23, 0);
+    // gpio_put(23, 0);
 
-    return averageVoltage * conversion_factor;
+    return battery_volts;
 }
 
 double AnalogSensors::getTemperature() {
@@ -48,8 +56,8 @@ double AnalogSensors::getTemperature() {
 
 float AnalogSensors::convertVoltageToPercentage(float voltage) {
     // Assuming a LiPo battery with a voltage range of 3.0V to 4.2V
-    float minVoltage = 3.0;
-    float maxVoltage = 4.2;
+    float minVoltage = 3.0 * BATTERY_CELLS;
+    float maxVoltage = 4.2 * BATTERY_CELLS;
 
     // Calculate the percentage based on the voltage range
     float percentage = (voltage - minVoltage) / (maxVoltage - minVoltage) * 100.0;

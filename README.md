@@ -115,30 +115,33 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-- diagnostic with timing for each core loop
-- convert joint state to radians for position
+- battery adc: 11.09 -> 1.4845 at divider
+- don't arm motors until ready
+- move led string header
+- dim LEDs
+- fan says 5v but is actually 3v3 pwm
+- rubber spacer for pcb screws
+- double check velocity is correct. we are maxing out at .58m/s
+- publish twistwithcovariancestamped instead of odom?
+- robot_localization
+- speed up publishing with static memory https://github.com/micro-ROS/micro-ROS-demos/blob/humble/rclc/static_type_handling/main.c
 - refactor publishers into separate files
-- refactor pid controller
 - publish odom
-- handle twist messages
+- handle twist messages / - subscribe to cmd commands
 - icm20948 has a dmp onboard. use sparkfun portable library: https://github.com/sparkfun/SparkFun_ICM-20948_ArduinoLibrary
     rewrite driver to use their sdk instead of generating a quaternion on cpu @ 100+hz
-- convert speed to m/s for cmd
-- subscribe to cmd commands
 - timeout i2c for imu so it doesn't freeze everything
-- power on self test
-- scaling imu output (Gs)
-- imu is sampling at 100hz, but our control loop is 50hz
+- power on self test (thinking about IMU here)
+- scaling imu output (Gs) - we don't need 8 Gs worth of scale
+- imu is sampling at 100hz, but our control loop is 50hz - not a problem if we do onboard dmp
 - adc_ref not connected.
 - add icm20948 to pcb
 - check ADC_VREF == 3.3 V
 - if a motor is not getting any pulses after some time, raise some kind of error and stop
-- diagnostic messages
-- param server for pid, speed, etc
-- joint state on mcu?
-- publish temperature from imu?
+- param server for pid, speed, etc - mostly coded, just needs to fix the build
 - use flash to save params
 - use mutex to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
+- use mutex to lock pulses? probably better to bit shift left, and AND the right bits
 
 
 
