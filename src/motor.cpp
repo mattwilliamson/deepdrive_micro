@@ -70,10 +70,6 @@ void Motor::readPulses() {
     }
 }
 
-int32_t Motor::getPulses() {
-    return pulses_;
-}
-
 int16_t Motor::calculatePid() {
     // Get pulses since last loop and extrapolate speed
     readPulses();

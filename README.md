@@ -115,7 +115,8 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-- battery adc: 11.09 -> 1.4845 at divider
+- IMU Not working on PCB
+- either move pico to center or add cutout for usb connector, it's putting pressure on the connector
 - don't arm motors until ready
 - move led string header
 - dim LEDs
@@ -142,6 +143,7 @@ front_right_wheel_velocity  89018
 - use flash to save params
 - use mutex to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
 - use mutex to lock pulses? probably better to bit shift left, and AND the right bits
+- send status string
 
 
 

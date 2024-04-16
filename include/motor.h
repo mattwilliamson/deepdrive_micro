@@ -13,9 +13,9 @@ extern "C" {
     #include "pico/stdlib.h"
 }
 
-using Micrometers = int32_t;
+using Micrometers = int64_t;
 using Meters = double;
-using Pulses = int32_t;
+using Pulses = int64_t;
 using DutyCycle = int16_t;
 using Radians = double;
 
@@ -93,13 +93,13 @@ public:
      * @param toMax The maximum value of the output range.
      * @return The mapped value.
      */
-    static int32_t map(int32_t value, int32_t fromMin, int32_t fromMax, int32_t toMin, int32_t toMax) {
+    static int64_t map(int64_t value, int64_t fromMin, int64_t fromMax, int64_t toMin, int64_t toMax) {
         // Calculate the range of the input and output values
-        int32_t inputRange = fromMax - fromMin;
-        int32_t outputRange = toMax - toMin;
+        int64_t inputRange = fromMax - fromMin;
+        int64_t outputRange = toMax - toMin;
 
         // Map the value from the input range to the output range
-        int32_t mappedValue = ((value - fromMin) * outputRange) / inputRange + toMin;
+        int64_t mappedValue = ((value - fromMin) * outputRange) / inputRange + toMin;
 
         return mappedValue;
     }
@@ -192,7 +192,18 @@ public:
      * @brief Get the total number of pulses counted by the motor.
      * @return The number of pulses counted by the motor.
      */
-    int32_t getPulses();
+    Pulses getPulses() {
+        return pulses_;
+    }
+
+    Micrometers getTotalMicrometers() {
+        return pulsesToMicrometers(pulses_);
+    }
+
+    Meters getTotalMeters() {
+        Meters um = pulsesToMicrometers(pulses_);
+        return um / MICRO_METERS;
+    }
 
     /**
      * @brief Calculate the PID controller output based on the desired speed and the current speed. 
@@ -230,7 +241,7 @@ private:
     int16_t speed_;                 // current speed pulses/sec
     int16_t speedSignal_;           // current speed signal pulses/sec
     int16_t targetSpeed_;           // desired speed of the motor pulses/sec
-    int32_t pulses_;                // Number of pulses counted by the motor total
+    int64_t pulses_;                // Number of pulses counted by the motor total
     int dutyCycle_;                 // PWM duty cycle
     uint slice_;                    // PWM slice number
     uint channel_;                  // PWM channel number

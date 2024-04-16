@@ -115,7 +115,7 @@
 #define PID_KP 0.95 // 1.9 starts to oscillate at .1m/s
 
 // Integral
-#define PID_KI 0.2 // 0.25 starts to oscillate
+#define PID_KI 0.15 // 0.25 starts to oscillate
 
 // Derivative
 #define PID_KD 0.2

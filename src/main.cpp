@@ -8,7 +8,7 @@
 // #include "imu/driver_mpu9250_dmp.h"
 
 // Number of uRosHandles allocated in the executor (1 timer, 1 subscription, 6 publisher)
-const size_t uRosHandles = 11 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
+const size_t uRosHandles = 12 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
 
 uint64_t core_start[2] = {0, 0};
 uint64_t core_elapsed[2] = {0, 0};
@@ -26,6 +26,7 @@ rcl_publisher_t publisher_join_state;
 rcl_publisher_t publisher_imu;
 rcl_publisher_t publisher_mag;
 rcl_publisher_t publisher_diagnostic;
+rcl_publisher_t publisher_odom;
 
 control_msgs__msg__MecanumDriveControllerState mgs_out_motor;
 sensor_msgs__msg__BatteryState msg_out_battery;
@@ -33,10 +34,14 @@ sensor_msgs__msg__JointState *msg_out_joint_state;
 sensor_msgs__msg__Imu *msg_out_imu;
 sensor_msgs__msg__MagneticField *msg_out_mag;
 diagnostic_msgs__msg__DiagnosticArray msg_out_diagnostic;
+nav_msgs__msg__Odometry *msg_out_odom;
 
 rcl_subscription_t subscriber_motor;
 control_msgs__msg__MecanumDriveControllerState msg_in_motor;
-// maybe switch to control_msgs__msg__SteeringControllerStatus
+
+rcl_subscription_t subscriber_cmd_vel;
+geometry_msgs__msg__Twist msg_in_cmd_vel;
+
 
 #ifdef IMU_ENABLED
 IMU imu = IMU();
@@ -124,46 +129,38 @@ void core1_entry() {
 
 // rclc_publisher_init_best_effort not currently working, but should enable async publishing
 
+// Subscriber callback for cmd vel
+void subscription_cmd_vel_callback(const void *msgIn) {
+  status.set(Status::Active);
+
+  // Cast received message to used type
+
+  const geometry_msgs__msg__Twist *m = (const geometry_msgs__msg__Twist *)msgIn;
+  for (auto &motor : motors) {
+    motor->setTargetSpeedMeters(m->linear.x);
+  }
+}
+
+int init_cmd_vel() {
+  RCCHECK(rclc_subscription_init_best_effort(
+      &subscriber_cmd_vel, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
+      "deepdrive_micro/cmd_vel"));
+  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber_cmd_vel, &msg_in_cmd_vel,
+    &subscription_cmd_vel_callback, ON_NEW_DATA));
+
+  return 0;
+}
+
 int init_diagnostic() {
   RCCHECK(rclc_publisher_init_default(
       &publisher_diagnostic, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(diagnostic_msgs, msg, DiagnosticArray),
       "/diagnostics"));
 
-  micro_ros_string_utilities_set(msg_out_diagnostic.header.frame_id, DIAGNOSTIC_FRAME);
+  msg_out_diagnostic.header.frame_id = micro_ros_string_utilities_init(DIAGNOSTIC_FRAME);
   diagnostic_msgs__msg__DiagnosticStatus__Sequence__init(&msg_out_diagnostic.status, DIAGNOSTIC_COUNT);
 
   msg_out_diagnostic.status.data[0].hardware_id = micro_ros_string_utilities_init("deepdrive_micro");
   msg_out_diagnostic.status.data[0].name = micro_ros_string_utilities_init("CPU Loop Time (us)");
-
-  // TODO: set error string from status
-  switch(status.get()) {
-    case Status::Connecting:
-      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__WARN;
-      break;
-    case Status::Connected:
-      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
-      break;
-    case Status::Active:
-      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
-      break;
-    case Status::Error:
-      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
-      break;
-    case Status::Rebooted:
-      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
-      break;
-    default:
-      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
-      break;
-  }
-  // msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
-  
-  // TODO: Send Status
-  if (rmw_uros_epoch_synchronized()) {
-    msg_out_diagnostic.status.data[0].message = micro_ros_string_utilities_init("OK");
-  } else {
-    msg_out_diagnostic.status.data[0].message = micro_ros_string_utilities_init("Time not synchronized");
-  }
   
   diagnostic_msgs__msg__KeyValue__Sequence__init(&msg_out_diagnostic.status.data[0].values, 2);
   msg_out_diagnostic.status.data[0].values.data[0].key = micro_ros_string_utilities_init("Core 0");
@@ -186,7 +183,74 @@ void publish_diagnostic() {
   // Assign the converted value to value.data
   msg_out_diagnostic.status.data[0].values.data[1].value.data = const_cast<char*>(core_elapsed_1_str.c_str());
 
+  // TODO: set error string from status
+  msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+  msg_out_diagnostic.status.data[0].message = micro_ros_string_utilities_init("OK");
+
+  // TODO: Set status string
+  switch(status.get()) {
+    case Status::Connecting:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__WARN;
+      break;
+    case Status::Connected:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+      break;
+    case Status::Active:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+      break;
+    case Status::Error:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
+      msg_out_diagnostic.status.data[0].message = micro_ros_string_utilities_init("Error");
+      break;
+    case Status::Rebooted:
+      msg_out_diagnostic.status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
+      break;
+  }
+  
+  // TODO: Send Status
+  if (!rmw_uros_epoch_synchronized()) {
+    msg_out_diagnostic.status.data[0].message = micro_ros_string_utilities_init("Time not synchronized");
+  }
+
   RCSOFTCHECK(rcl_publish(&publisher_diagnostic, &msg_out_diagnostic, NULL));
+}
+
+int init_odom() {
+  RCCHECK(rclc_publisher_init_default(
+      &publisher_odom, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
+      "deepdrive_micro/odom"));
+
+  // TODO: Make sure we got the frame and everything correct
+  msg_out_odom = nav_msgs__msg__Odometry__create();
+  msg_out_odom->header.frame_id = micro_ros_string_utilities_init("odom");
+  msg_out_odom->child_frame_id = micro_ros_string_utilities_init("base_link");
+
+  msg_out_odom->pose.covariance[0] = 0.001;
+  msg_out_odom->pose.covariance[4] = 0.001;
+  msg_out_odom->pose.covariance[8] = 0.001;
+
+  return 0;
+}
+
+void publish_odom() {
+  msg_out_odom->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
+  msg_out_odom->header.stamp.nanosec = rmw_uros_epoch_nanos();
+
+  // Get the meters traveled for each motor and average it out
+  Meters meters = 0;
+  for (auto &motor : motors) {
+    meters += motor->getTotalMeters();
+  }
+  meters /= (double)MOTOR_COUNT;
+
+  msg_out_odom->pose.pose.position.x = meters;
+
+  msg_out_odom->pose.pose.orientation.x = motors[IDX_MOTOR_FRONT_LEFT]->getTotalMicrometers();
+  msg_out_odom->pose.pose.orientation.y = motors[IDX_MOTOR_BACK_LEFT]->getTotalMicrometers();
+  msg_out_odom->pose.pose.orientation.z = motors[IDX_MOTOR_FRONT_RIGHT]->getTotalMicrometers();
+  msg_out_odom->pose.pose.orientation.w = motors[IDX_MOTOR_BACK_RIGHT]->getTotalMicrometers();
+
+  RCSOFTCHECK(rcl_publish(&publisher_odom, msg_out_odom, NULL));
 }
 
 
@@ -195,9 +259,8 @@ int init_battery() {
       &publisher_battery, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState),
       "deepdrive_micro/battery"));
 
-  micro_ros_string_utilities_set(msg_out_battery.location, "base_link");
-  micro_ros_string_utilities_set(msg_out_battery.location, "base_link");
-  micro_ros_string_utilities_set(msg_out_battery.serial_number,  "1234567890");
+  msg_out_battery.location = micro_ros_string_utilities_init("base_link");
+  msg_out_battery.serial_number = micro_ros_string_utilities_init("1234567890");
   msg_out_battery.design_capacity = BATTERY_CAPACITY;
   msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
 
@@ -212,7 +275,13 @@ void publish_battery() {
   msg_out_battery.present = true;
   msg_out_battery.temperature = analog_sensors->getTemperature();
 
-  // msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
+  if (msg_out_battery.voltage > 2.0) {
+    msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
+    msg_out_battery.present = true;
+  } else if (msg_out_battery.voltage < 2.0) {
+    msg_out_battery.power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_UNKNOWN;
+    msg_out_battery.present = false;
+  } else
 
   RCSOFTCHECK(rcl_publish(&publisher_battery, &msg_out_battery, NULL));
 }
@@ -235,7 +304,7 @@ int init_joint_state()  {
 //     ));
 
   msg_out_joint_state = sensor_msgs__msg__JointState__create();
-  micro_ros_string_utilities_set(msg_out_joint_state->header.frame_id, "base_link");
+  msg_out_joint_state->header.frame_id = micro_ros_string_utilities_init("base_link");
   
   msg_out_joint_state->name = *rosidl_runtime_c__String__Sequence__create(MOTOR_COUNT);
   rosidl_runtime_c__float64__Sequence__init(&msg_out_joint_state->position, MOTOR_COUNT);
@@ -360,7 +429,6 @@ void publish_imu() {
 }
 
 
-
 void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
   // TODO: Do some calculations in the other core and publish in this one
   core_start[0] = time_us_64();
@@ -412,6 +480,8 @@ void timer_cb_general(rcl_timer_t *timer, int64_t last_call_time) {
 
   // 630us to publish_imu
   publish_imu();
+
+  publish_odom();
 
   core_elapsed[0] = time_us_64() - core_start[0];
 
@@ -553,6 +623,7 @@ int main() {
   if (init_joint_state() != 0) {return 1;};
   init_imu();
   init_diagnostic();
+  init_odom();
 
   // Timer
   // RCCHECK(rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(1.0/CONTROL_LOOP_HZ*1000),
@@ -585,8 +656,9 @@ int main() {
   RCCHECK(rclc_subscription_init_best_effort(
       &subscriber_motor, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg, MecanumDriveControllerState),
       "deepdrive_micro/cmd"));
-  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber_motor, &msg_in_motor, &subscription_motor_callback, ON_NEW_DATA));
-
+  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber_motor, &msg_in_motor,
+    &subscription_motor_callback, ON_NEW_DATA));
+  RCCHECK(init_cmd_vel());
   // TODO: Fix this. Probably memory issue.
   // RCCHECK(rclc_executor_add_parameter_server(&executor, &param_server, on_parameter_changed));
 

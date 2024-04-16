@@ -31,6 +31,9 @@ extern "C" {
     #include <sensor_msgs/msg/magnetic_field.h>
     #include <diagnostic_msgs/msg/diagnostic_array.h>
     #include <diagnostic_msgs/msg/key_value.h>
+    #include <geometry_msgs/msg/twist.h>
+    #include <nav_msgs/msg/odometry.h>
+    #include <geometry_msgs/msg/point.h>
     #include <rosidl_runtime_c/string.h>
     #include <micro_ros_utilities/string_utilities.h>
     #include <rosidl_runtime_c/string_functions.h>
