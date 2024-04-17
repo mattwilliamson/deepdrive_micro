@@ -4,7 +4,7 @@ int Node::init_odom() {
   RCCHECK(rclc_publisher_init_default(
       &publisher_odom, &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-      "deepdrive_micro/odom"));
+      "~/odom"));
 
   // TODO: Make sure we got the frame and everything correct
   msg_out_odom = nav_msgs__msg__Odometry__create();

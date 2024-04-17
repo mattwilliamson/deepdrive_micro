@@ -1,11 +1,11 @@
 #include "node.hpp"
 
-void Node::initi_motor_pub() {
+void Node::init_motor_pub() {
   RCCHECK(rclc_publisher_init_default(
       &publisher_motor, &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg,
                                   MecanumDriveControllerState),
-      "deepdrive_micro/pulses"));
+      "~/pulses"));
 }
 
 void Node::publish_motor() {

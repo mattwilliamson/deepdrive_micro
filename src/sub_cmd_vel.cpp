@@ -20,7 +20,7 @@ int Node::init_cmd_vel() {
   RCCHECK(rclc_subscription_init_best_effort(
       &subscriber_cmd_vel, &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
-      "deepdrive_micro/cmd_vel"));
+      "~/cmd_vel"));
   RCCHECK(rclc_executor_add_subscription(
       &executor, &subscriber_cmd_vel, &msg_in_cmd_vel,
       &subscription_cmd_vel_callback_msg, ON_NEW_DATA));

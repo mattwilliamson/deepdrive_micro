@@ -4,11 +4,20 @@ static void timer_cb_main_loop(rcl_timer_t *timer, int64_t last_call_time) {
   Node::getInstance().spin_main_loop(timer, last_call_time);
 }
 
+int Node::init_main_loop() {
+  return rclc_timer_init_default(&timer_main_loop, &support,
+                                  RCL_MS_TO_NS(1.0 / MAIN_LOOP_HZ * 1000),
+                                  timer_cb_main_loop);
+  // return rclc_timer_init_default(&timer_main_loop, &support,
+  //                                 RCL_MS_TO_NS(1000),
+  //                                 timer_cb_main_loop);
+}
+
 int Node::start_main_loop() {
-  RCCHECK(rclc_timer_init_default(&timer_main_loop, &support,
-                                  RCL_MS_TO_NS(1.0 / CONTROL_LOOP_HZ * 1000),
-                                  timer_cb_main_loop));
-  RCCHECK(rclc_executor_add_timer(&executor, &timer_main_loop));
+  rcl_ret_t error_code = rclc_executor_add_timer(&executor, &timer_main_loop);
+  if (error_code != RCL_RET_OK) {
+    return error_code;
+  }
   return 0;
 }
 

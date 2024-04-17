@@ -4,7 +4,7 @@ int Node::init_battery() {
   RCCHECK(rclc_publisher_init_default(
       &publisher_battery, &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState),
-      "deepdrive_micro/battery"));
+      "~/battery"));
 
   msg_out_battery.location = micro_ros_string_utilities_init("base_link");
   msg_out_battery.serial_number = micro_ros_string_utilities_init("1234567890");

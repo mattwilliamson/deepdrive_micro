@@ -4,12 +4,12 @@ int Node::init_imu() {
 #ifdef IMU_ENABLED
   RCCHECK(rclc_publisher_init_default(
       &publisher_imu, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-      "deepdrive_micro/imu"));
+      "~/imu"));
 
   RCCHECK(rclc_publisher_init_default(
       &publisher_mag, &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, MagneticField),
-      "deepdrive_micro/mag"));
+      "~/mag"));
 
   if (imu.start() != 0) {
     printf("IMU start failed\r\n");

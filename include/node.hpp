@@ -34,6 +34,7 @@ extern "C" {
 #include <sensor_msgs/msg/imu.h>
 #include <sensor_msgs/msg/joint_state.h>
 #include <sensor_msgs/msg/magnetic_field.h>
+#include <std_msgs/msg/int32.h>
 
 #include "config.h"
 #include "hardware/i2c.h"
@@ -156,6 +157,7 @@ class Node {
    *
    * @return An integer value indicating the status of the main loop.
    */
+  int init_main_loop();
   int start_main_loop();
   void spin_main_loop(rcl_timer_t* timer_main_loop, int64_t last_call_time);
 
@@ -197,7 +199,7 @@ class Node {
   // PUBLISHERS
 
   // Motor Publisher
-  void initi_motor_pub();
+  void init_motor_pub();
   void publish_motor();
 
   // Diagnostic publisher

@@ -15,39 +15,46 @@ int Node::init_motors() {
 }
 
 Node::Node() {
+  rcl_ret_t error_code;
+  status.set(Status::Connecting);
+
+  // TODO: Status booting, update after ping to connecting
+
   // TODO: Refactor status now that node is in a class
   // status = StatusManager::getInstance();
 
   // Initialize ROS
   allocator = rcl_get_default_allocator();
+
+  // Wait for agent successful ping for 2 minutes.
+  error_code = rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS);
+  RCCHECK(error_code);
+  if (error_code != RCL_RET_OK) {
+    return;
+  }
+  // TODO: if spin is called after this fails, return an error
+
+  rclc_support_init(&support, 0, NULL, &allocator);
+  rclc_node_init_default(&node, "deepdrive_micro", "", &support);
   // rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
+
+  init_main_loop();
 
   // Number of uRosHandles allocated in the executor (1 timer, 1 subscription,
   // 6 publisher)
   // TODO: Increment these memory handles
-  const size_t uRosHandles = 12 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
+  // const size_t uRosHandles = 12 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
+  const size_t uRosHandles = 20;
   executor = rclc_executor_get_zero_initialized_executor();
-  RCCHECK(
-      rclc_executor_init(&executor, &support.context, uRosHandles, &allocator));
-
+  rclc_executor_init(&executor, &support.context, uRosHandles, &allocator);
+  
   // stdio_init_all(); // Called by uros
   init_watchdog();
 
-  // -------------------------
-  // Setup micro-ROS
-  rmw_uros_set_custom_transport(
-      true, NULL, pico_serial_transport_open, pico_serial_transport_close,
-      pico_serial_transport_write, pico_serial_transport_read);
-
-  // Wait for agent successful ping for 2 minutes.
-  RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
-  RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
-  RCCHECK(rclc_node_init_default(&node, "deepdrive_micro_node", "", &support));
-
-  status.set(Status::Connected);
-
   // Synchronize time with the agent
   rmw_uros_sync_session(5000);
+
+  // TODO: Error handling for all the init functions
 
   // LED Ring to show status
   led_ring.start();
@@ -60,7 +67,22 @@ Node::Node() {
   analog_sensors->init();
   init_battery();
 
-  status.set(Status::Connecting);
+  init_motor_pub();
+
+  // Diagnostic publisher
+  init_diagnostic();
+
+  // Odom publisher
+  init_odom();
+
+  // Joint State publisher
+  init_joint_state();
+
+  // IMU publisher
+  init_imu();
+
+
+  status.set(Status::Connected);
 
   // Twist Subscriber
   RCCHECK(init_cmd_vel());
@@ -71,17 +93,28 @@ Node::Node() {
 
   // Start Motors
   RCCHECK(init_motors());
+
+  status.set(Status::Connected);
 }
 
 void Node::spin() {
+  rcl_ret_t error_code;
+
   // Launch the control loop on the other core
   start_control_loop();
 
+  // Main pub/sub loop is on a timer inside rclc_executor
+  error_code = start_main_loop();
+  RCCHECK(error_code);
+
   // Spin the executor on this core to pub/sub to ROS
-  while (rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1) == RCL_RET_OK)) {
+  while (true) {
 #ifdef WATCHDOG_ENABLED
     watchdog_update();
 #endif
+
+  // rclc_executor_spin(&executor);
+    rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
 
     // TODO: Timer to monitor agent?
     // RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));

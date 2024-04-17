@@ -21,13 +21,14 @@ using DutyCycle = int16_t;
 using Radians = double;
 
 // Keep the intermediate pulse counts until the next read from the map
-static bool gpio_callbacks_configured =
-    false;  // Flag to check if the GPIO callbacks are configured
 
-// TODO: Prune this down to use less memory, an array is fast for now, just
-// wasting some ints in memory
-static volatile int pulse_count_map[30] =
-    {};  // Map of pin number to pulse count
+// Flag to check if the GPIO callbacks are configured
+static bool gpio_callbacks_configured = false;
+
+// TODO: Prune this down to use less memory, an array is fast for now, just wasting some ints in memory
+
+// Map of pin number to pulse count
+static volatile int pulse_count_map[30] = {};
 
 // Got some help from https://cocode.se/linux/raspberry/pwm.html
 
@@ -36,8 +37,8 @@ static volatile int pulse_count_map[30] =
  * @brief Represents a motor with control functions.
  *
  * The Motor class provides methods to control the speed and state of a motor.
- * It can be used to control various types of motors, such as DC motors or servo
- * motors.
+ * It can be used to control various types of motors, such as DC motors or
+ * servo motors.
  */
 class Motor {
  public:
@@ -50,26 +51,34 @@ class Motor {
   // 2000 us
   static const DutyCycle DUTY_CYCLE_MAX = 980;
 
-  static const Micrometers WHEEL_DIAMETER =
-      89 * MICRO_METERS / MILLI_METERS;  // diameter of the wheel in micrometers
-  static const Micrometers WHEEL_BASE =
-      240 * MICRO_METERS /
-      MILLI_METERS;  // distance between left and right wheels
+  // diameter of the wheel in micrometers
+  static const Micrometers WHEEL_DIAMETER = 89 * MICRO_METERS / MILLI_METERS;
+
+  // distance between left and right wheels
+  static const Micrometers WHEEL_BASE = 240 * MICRO_METERS / MILLI_METERS;
 
   // TODO: There is some backlash in the motor, so we need to add some deadband
   // (~696-688=8 pulses) Forward: 34826/50 = 696 | 93156/127 = 734 | 34942/50.2
-  // = 696 | 13988/20.1 = 695.5 Reverse: -34727/50.4 = -689 | -27862/40.5 = -687
+  // = 696 | 13988/20.1 = 695.5 Reverse: -34727/50.4 = -689 | -27862/40.5 =
+  // -687
 
-  static const Pulses PULSES_PER_REV = 696;
-  static const Pulses MAX_SPEED_PPS =
-      1450;  // Pulses per second at full throttle (of the slowest motor)
+  // Pulse count per revolution of the motor
+  static const Pulses PULSES_PER_REV = 696 * 2; // 2x for rising and falling edge
+
+  // Pulses per second at full throttle (of the slowest motor)
+  static const Pulses MAX_SPEED_PPS = 1450 * 2;  // 2x for rising and falling edge
+
+  // Micrometers per revolution of the motor
   static constexpr Micrometers UM_PER_REV = WHEEL_DIAMETER * M_PI;
+
+  // Number of pulses at max speed for each time slice of the control loop
   static constexpr Pulses MAX_PULSES_PER_LOOP = MAX_SPEED_PPS / CONTROL_LOOP_HZ;
+  
   // static constexpr Pulses PULSES_PER_UM = PULSES_PER_REV / UM_PER_REV;
   // static constexpr double MAX_SPEED_US_PER = MAX_SPEED_PPS / PULSES_PER_UM;
   // // Meter per second at full throttle
 
-  PIDController* pidController_;  // PID controller for the motor
+  PIDController *pidController_;  // PID controller for the motor
 
   /**
    * @brief Constructor for Motor class.
@@ -143,7 +152,8 @@ class Motor {
   void setSpeedSignal(Pulses speedSignal);
 
   /**
-   * @brief Get the current actual speed of the motor in Micrometers per second.
+   * @brief Get the current actual speed of the motor in Micrometers per
+   * second.
    * @return The speed of the motor in Micrometers per second.
    */
   Micrometers getSpeedMicrometers() {

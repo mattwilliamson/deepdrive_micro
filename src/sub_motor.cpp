@@ -11,7 +11,7 @@ int Node::init_sub_motor() {
       &subscriber_motor, &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(control_msgs, msg,
                                   MecanumDriveControllerState),
-      "deepdrive_micro/cmd"));
+      "~/cmd"));
   RCCHECK(rclc_executor_add_subscription(
       &executor, &subscriber_motor, &msg_in_motor,
       &subscription_motor_callback_msg, ON_NEW_DATA));

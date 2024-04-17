@@ -2,9 +2,10 @@
  * @file config.h
  * @brief Configuration file for the deepdrive_micro project.
  *
- * This file contains various configuration settings for the deepdrive_micro project.
- * It defines constants and macros related to control loop frequency, LED ring, micro-ros,
- * motors, wheel encoder pulse counter, PID controller, battery voltage, IMU, and diagnostics.
+ * This file contains various configuration settings for the deepdrive_micro
+ * project. It defines constants and macros related to control loop frequency,
+ * LED ring, micro-ros, motors, wheel encoder pulse counter, PID controller,
+ * battery voltage, IMU, and diagnostics.
  */
 
 #ifndef CONFIG_H
@@ -12,11 +13,9 @@
 
 #define NDEBUG
 
-// deepdrive_micro/pulses
-// deepdrive_micro/cmd
-
 // #define CONTROL_LOOP_HZ 1.0
 #define CONTROL_LOOP_HZ 50
+#define MAIN_LOOP_HZ 20
 
 // Comment out to disable
 // #define WATCHDOG_ENABLED 1
@@ -100,8 +99,8 @@
 #define PIN_ENCODER_FRONT_RIGHT 11
 #define PIN_ENCODER_BACK_RIGHT 10
 
-// #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
-#define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE
+#define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
+// #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE
 
 // END WHEEL ENCODER PULSE COUNTER
 // ----------------------------------
@@ -114,7 +113,7 @@
 #define PID_KP 0.95  // 1.9 starts to oscillate at .1m/s
 
 // Integral
-#define PID_KI 0.15  // 0.25 starts to oscillate
+#define PID_KI 0.1  // 0.25 starts to oscillate
 
 // Derivative
 #define PID_KD 0.2
