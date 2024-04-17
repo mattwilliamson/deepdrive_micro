@@ -107,6 +107,8 @@
         "any": "cpp",
         "future": "cpp",
         "netfwd": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "stdint.h": "c",
+        "cyw43_arch.h": "c"
     }
 }

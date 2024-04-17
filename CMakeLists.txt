@@ -17,15 +17,33 @@ include_directories(
 link_directories(libmicroros)
 add_executable(deepdrive_micro
     src/main.cpp
+
+    src/node.cpp
+    src/control_loop.cpp
+    src/main_loop.cpp
+
     src/pico_uart_transport.c
     src/led_ring.cpp
     src/led_status.c
-    src/servo.c
     src/status.cpp
     src/motor.cpp
     src/imu.cpp
     src/pid.cpp
     src/analog_sensors.cpp
+    src/param_server.cpp
+    src/watchdog.cpp
+
+    # Subscribers
+    src/sub_cmd_vel.cpp
+    src/sub_motor.cpp
+
+    # Publishers
+    src/pub_diagnostic.cpp
+    src/pub_odom.cpp
+    src/pub_battery.cpp
+    src/pub_imu.cpp
+    src/pub_motor.cpp
+    src/pub_joint_state.cpp
 
     # IMU
     src/imu/pico-icm20948.c

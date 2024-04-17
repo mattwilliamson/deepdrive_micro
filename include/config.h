@@ -1,3 +1,12 @@
+/**
+ * @file config.h
+ * @brief Configuration file for the deepdrive_micro project.
+ *
+ * This file contains various configuration settings for the deepdrive_micro project.
+ * It defines constants and macros related to control loop frequency, LED ring, micro-ros,
+ * motors, wheel encoder pulse counter, PID controller, battery voltage, IMU, and diagnostics.
+ */
+
 #ifndef CONFIG_H
 #define CONFIG_H
 
@@ -35,8 +44,6 @@
 // END LED RING
 // ----------------------------------
 
-
-
 // START micro-ros
 // ----------------------------------
 
@@ -45,7 +52,6 @@
 // #define UROS_ATTEMPTS 1
 
 // ----------------------------------
-
 
 // ----------------------------------
 // START LED STATUS
@@ -61,22 +67,21 @@
 // END LED STATUS
 // ----------------------------------
 
-
 // ----------------------------------
 // START MOTORS
 // ----------------------------------
 
 #define MOTOR_COUNT 4
 
-#define PIN_MOTOR_FRONT_LEFT    9
-#define PIN_MOTOR_BACK_LEFT     8
-#define PIN_MOTOR_FRONT_RIGHT   7
-#define PIN_MOTOR_BACK_RIGHT    6
+#define PIN_MOTOR_FRONT_LEFT 9
+#define PIN_MOTOR_BACK_LEFT 8
+#define PIN_MOTOR_FRONT_RIGHT 7
+#define PIN_MOTOR_BACK_RIGHT 6
 
-#define IDX_MOTOR_FRONT_LEFT    0
-#define IDX_MOTOR_BACK_LEFT     1
-#define IDX_MOTOR_FRONT_RIGHT   2
-#define IDX_MOTOR_BACK_RIGHT    3
+#define IDX_MOTOR_FRONT_LEFT 0
+#define IDX_MOTOR_BACK_LEFT 1
+#define IDX_MOTOR_FRONT_RIGHT 2
+#define IDX_MOTOR_BACK_RIGHT 3
 
 #define MOTOR_JOIN_FRONT_LEFT "wheel_front_left_joint"
 #define MOTOR_JOIN_BACK_LEFT "wheel_back_left_joint"
@@ -86,45 +91,36 @@
 // END MOTORS
 // ----------------------------------
 
-
-
 // ----------------------------------
 // START WHEEL ENCODER PULSE COUNTER
 // ----------------------------------
 
-#define PIN_ENCODER_FRONT_LEFT    13
-#define PIN_ENCODER_BACK_LEFT     12
-#define PIN_ENCODER_FRONT_RIGHT   11
-#define PIN_ENCODER_BACK_RIGHT    10
+#define PIN_ENCODER_FRONT_LEFT 13
+#define PIN_ENCODER_BACK_LEFT 12
+#define PIN_ENCODER_FRONT_RIGHT 11
+#define PIN_ENCODER_BACK_RIGHT 10
 
 // #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
 #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE
 
-
-
 // END WHEEL ENCODER PULSE COUNTER
 // ----------------------------------
-
-
-
 
 // ----------------------------------
 // START PID CONTROLLER
 // ----------------------------------
 
 // Proportional
-#define PID_KP 0.95 // 1.9 starts to oscillate at .1m/s
+#define PID_KP 0.95  // 1.9 starts to oscillate at .1m/s
 
 // Integral
-#define PID_KI 0.15 // 0.25 starts to oscillate
+#define PID_KI 0.15  // 0.25 starts to oscillate
 
 // Derivative
 #define PID_KD 0.2
 
 // END PID CONTROLLER
 // ----------------------------------
-
-
 
 // ----------------------------------
 // START BATTERY VOLTAGE
@@ -142,12 +138,10 @@
 #define BATTERY_VOLTAGE_REFERENCE 3.277f
 #define BATTERY_VOLTAGE_CONVERSION 11.07f / 1.8839550018310547f
 #define BATTERY_CELLS 3
-#define BATTERY_CAPACITY 5200 // mAh
+#define BATTERY_CAPACITY 5200  // mAh
 
 // END BATTERY VOLTAGE
 // ----------------------------------
-
-
 
 // ----------------------------------
 // START IMU
@@ -157,7 +151,8 @@
 #define IMU_I2C_SPEED 400 * 1000
 #define IMU_I2C_SDA 4
 #define IMU_I2C_SCL 5
-#define IMU_I2C {i2c0_hw, false}
+#define IMU_I2C \
+  { i2c0_hw, false }
 #define IMU_ADDRESS 0x68
 #define IMU_ADDRESS_MAG 0x0C
 
@@ -165,8 +160,6 @@
 
 // END IMU
 // ----------------------------------
-
-
 
 // ----------------------------------
 // START DIAGNOSTICS
@@ -178,4 +171,4 @@
 // END DIAGNOSTICS
 // ----------------------------------
 
-#endif // CONFIG_H
+#endif  // CONFIG_H
