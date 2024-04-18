@@ -115,7 +115,11 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-- IMU Not working on PCB
+- IMU Not working on PCB - 2 sda and 2 scl?
+- Publish Odom
+- Perhaps 2 nodes?
+- Bit shift pulse counter
+- Mutex on Odom pub vs calculation
 - either move pico to center or add cutout for usb connector, it's putting pressure on the connector
 - don't arm motors until ready
 - move led string header
