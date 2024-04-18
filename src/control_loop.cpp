@@ -47,6 +47,14 @@ void Node::spin_control_loop() {
     }
 #endif
 
+#ifdef IMU_ENABLED
+
+    int8_t success = imu.read();
+    // if (success != ImuErrorCode::OK) {
+    //   printf("Error reading IMU data\r\n");
+    //   return;
+    // }
+
     // TODO: Do other processing here to make publishing on core0 as fast as
     // possible e.g. calculate odometry, publish sensor data, etc.
 
@@ -55,6 +63,7 @@ void Node::spin_control_loop() {
     // sleep_ms(1);
   }
 }
+#endif
 
 int Node::start_control_loop() {
   // Parallel processing core - RGB LED Ring and control loop

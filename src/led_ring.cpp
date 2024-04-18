@@ -10,7 +10,6 @@ LEDRing::LEDRing(uint8_t pin, PIO pio, uint8_t ledCount)
 
 void LEDRing::start() {
   t = 0;
-  stdio_init_all();
   // printf("WS2812 Smoke Test, using pin %d", pin);
   int sm = pio_claim_unused_sm(pio, false);
   uint offset = pio_add_program(pio, &ws2812_program);

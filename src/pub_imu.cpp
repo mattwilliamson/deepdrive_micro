@@ -11,6 +11,12 @@ int Node::init_imu() {
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, MagneticField),
       "~/mag"));
 
+  msg_out_imu = sensor_msgs__msg__Imu__create();
+  msg_out_imu->header.frame_id = micro_ros_string_utilities_init(IMU_FRAME);
+
+  msg_out_mag = sensor_msgs__msg__MagneticField__create();
+  msg_out_mag->header.frame_id = micro_ros_string_utilities_init(IMU_FRAME);
+
   if (imu.start() != 0) {
     printf("IMU start failed\r\n");
     return 1;
@@ -21,12 +27,6 @@ int Node::init_imu() {
   // TODO: Save the compass calibration to EEPROM or flash or something and
   // expose a service to trigger it
 
-  msg_out_imu = sensor_msgs__msg__Imu__create();
-  msg_out_imu->header.frame_id = micro_ros_string_utilities_init(IMU_FRAME);
-
-  msg_out_mag = sensor_msgs__msg__MagneticField__create();
-  msg_out_mag->header.frame_id = micro_ros_string_utilities_init(IMU_FRAME);
-
 #endif
 
   return 0;
@@ -34,27 +34,29 @@ int Node::init_imu() {
 
 void Node::publish_imu() {
 #ifdef IMU_ENABLED
-  int8_t success = imu.read();
 
-  Vector3 accel = imu.getAccel();
+  msg_out_imu->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
+  msg_out_imu->header.stamp.nanosec = rmw_uros_epoch_nanos();
 
-  msg_out_imu->linear_acceleration.x = accel.x;
-  msg_out_imu->linear_acceleration.y = accel.y;
-  msg_out_imu->linear_acceleration.z = accel.z;
+  // Vector3 accel = imu.getAccel();
 
-  msg_out_imu->linear_acceleration_covariance[0] = 0.001;
-  msg_out_imu->linear_acceleration_covariance[4] = 0.001;
-  msg_out_imu->linear_acceleration_covariance[8] = 0.001;
+  // msg_out_imu->linear_acceleration.x = accel.x;
+  // msg_out_imu->linear_acceleration.y = accel.y;
+  // msg_out_imu->linear_acceleration.z = accel.z;
 
-  Vector3 gyro = imu.getGyro();
+  // msg_out_imu->linear_acceleration_covariance[0] = 0.001;
+  // msg_out_imu->linear_acceleration_covariance[4] = 0.001;
+  // msg_out_imu->linear_acceleration_covariance[8] = 0.001;
 
-  msg_out_imu->angular_velocity.x = gyro.x;
-  msg_out_imu->angular_velocity.y = gyro.y;
-  msg_out_imu->angular_velocity.z = gyro.z;
+  // Vector3 gyro = imu.getGyro();
 
-  msg_out_imu->angular_velocity_covariance[0] = 0.001;
-  msg_out_imu->angular_velocity_covariance[4] = 0.001;
-  msg_out_imu->angular_velocity_covariance[8] = 0.001;
+  // msg_out_imu->angular_velocity.x = gyro.x;
+  // msg_out_imu->angular_velocity.y = gyro.y;
+  // msg_out_imu->angular_velocity.z = gyro.z;
+
+  // msg_out_imu->angular_velocity_covariance[0] = 0.001;
+  // msg_out_imu->angular_velocity_covariance[4] = 0.001;
+  // msg_out_imu->angular_velocity_covariance[8] = 0.001;
 
   Quaternion orientation = imu.getOrientation();
 
@@ -67,25 +69,37 @@ void Node::publish_imu() {
   msg_out_imu->orientation_covariance[4] = 0.001;
   msg_out_imu->orientation_covariance[8] = 0.001;
 
-  msg_out_imu->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
-  msg_out_imu->header.stamp.nanosec = rmw_uros_epoch_nanos();
+  // For testing
+  auto euler = IMU::quaternianToEuler(orientation);
+  msg_out_imu->linear_acceleration.x = euler[0];
+  msg_out_imu->linear_acceleration.y = euler[1];
+  msg_out_imu->linear_acceleration.z = euler[2];
 
-  RCSOFTCHECK(rcl_publish(&publisher_imu, msg_out_imu, NULL));
+  // msg_out_imu->linear_acceleration_covariance[0] = 0.001;
+  // msg_out_imu->linear_acceleration_covariance[4] = 0.001;
+  // msg_out_imu->linear_acceleration_covariance[8] = 0.001;
+
+  // RCSOFTCHECK(rcl_publish(&publisher_imu, msg_out_imu, NULL));
+  rcl_ret_t pub_ok = rcl_publish(&publisher_imu, msg_out_imu, NULL);
+
+  if (pub_ok != RCL_RET_OK) {
+    printf("Error publishing IMU data\r\n");
+  }
 
   // Magnetometer
-  Vector3 mag = imu.getMag();
+  // Vector3 mag = imu.getMag();
 
-  msg_out_mag->magnetic_field.x = mag.x;
-  msg_out_mag->magnetic_field.y = mag.y;
-  msg_out_mag->magnetic_field.z = mag.z;
+  // msg_out_mag->magnetic_field.x = mag.x;
+  // msg_out_mag->magnetic_field.y = mag.y;
+  // msg_out_mag->magnetic_field.z = mag.z;
 
-  msg_out_mag->magnetic_field_covariance[0] = 0.001;
-  msg_out_mag->magnetic_field_covariance[4] = 0.001;
-  msg_out_mag->magnetic_field_covariance[8] = 0.001;
+  // msg_out_mag->magnetic_field_covariance[0] = 0.001;
+  // msg_out_mag->magnetic_field_covariance[4] = 0.001;
+  // msg_out_mag->magnetic_field_covariance[8] = 0.001;
 
-  msg_out_mag->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
-  msg_out_mag->header.stamp.nanosec = rmw_uros_epoch_nanos();
+  // msg_out_mag->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
+  // msg_out_mag->header.stamp.nanosec = rmw_uros_epoch_nanos();
 
-  RCSOFTCHECK(rcl_publish(&publisher_mag, msg_out_mag, NULL));
+  // RCSOFTCHECK(rcl_publish(&publisher_mag, &msg_out_mag, NULL));
 #endif
 }

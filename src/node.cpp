@@ -67,6 +67,10 @@ Node::Node() {
   analog_sensors->init();
   init_battery();
 
+  // IMU publisher
+  init_imu();
+
+  // Motor publisher
   init_motor_pub();
 
   // Diagnostic publisher
@@ -78,18 +82,11 @@ Node::Node() {
   // Joint State publisher
   init_joint_state();
 
-  // IMU publisher
-  init_imu();
-
 
   status.set(Status::Connected);
 
   // Twist Subscriber
   RCCHECK(init_cmd_vel());
-
-#ifdef IMU_ENABLED
-  IMU imu = IMU();
-#endif
 
   // Start Motors
   RCCHECK(init_motors());

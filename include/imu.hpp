@@ -2,6 +2,7 @@
 #define IMU_HPP
 
 #include "config.h"
+#include "ICM_20948.h"
 
 // https://invensense.tdk.com/download-pdf/icm-20948-datasheet/
 
@@ -23,12 +24,24 @@
 // disregard the associated estimate.
 
 extern "C" {
-#include "MadgwickAHRS.h"
 #include "hardware/i2c.h"
-#include "pico-icm20948.h"
+#include "pico/stdlib.h"
 }
 
 #include <cmath>
+#include <array>
+
+typedef struct icm20984_data {
+    // 0: x, 1: y, 2: z
+    int16_t accel_raw[3];
+    int16_t accel_bias[3];
+    int16_t gyro_raw[3];
+    int16_t gyro_bias[3];
+    int16_t mag_raw[3];
+    int16_t mag_bias[3];
+    float temp_c;
+} icm20984_data_t;
+
 
 struct Vector3 {
   float x;
@@ -37,10 +50,19 @@ struct Vector3 {
 };
 
 struct Quaternion {
-  float w;
-  float x;
-  float y;
-  float z;
+  double w;
+  double x;
+  double y;
+  double z;
+};
+
+enum ImuErrorCode {
+  OK = 0,
+  DMP_FAILED = 1,
+  I2C_TIMEOUT = 2,
+  NO_DATA = 3,
+  ERROR = 4,
+  INIT = -1
 };
 
 const float RAD_TO_DEG = 57.29578;
@@ -55,6 +77,8 @@ const float GRAVITY = 9.81;
  */
 class IMU {
  public:
+  ImuErrorCode error;  // Error code indicating the status of the sensor.
+
   /**
    * @brief Constructs an IMU object with the specified parameters.
    *
@@ -98,7 +122,7 @@ class IMU {
    * @return An integer value indicating the success or failure of reading the
    * sensor data.
    */
-  int read();
+  ImuErrorCode read();
 
   /**
    * @brief Converts the quaternion representation of orientation to Euler
@@ -108,7 +132,7 @@ class IMU {
    * representation of orientation.
    * @param euler Array to store the resulting Euler angles.
    */
-  static void quaternianToEuler(madgwick_ahrs_t *data, float euler[]);
+  static std::array<float, 3> quaternianToEuler(const Quaternion& quaternion);
 
   /**
    * @brief Retrieves the acceleration measurements from the IMU sensor.
@@ -143,8 +167,9 @@ class IMU {
   Quaternion getOrientation();
 
  private:
-  i2c_inst_t
-      i2c_;  // The I2C instance used for communication with the IMU sensor.
+  ICM_20948_I2C imu_;
+
+  i2c_inst_t i2c_;  // The I2C instance used for communication with the IMU sensor.
   uint8_t address_;     // The I2C address of the IMU sensor.
   uint8_t addressMag_;  // The I2C address of the magnetometer within the IMU
                         // sensor.
@@ -152,9 +177,10 @@ class IMU {
   int i2c_scl_;         // The SCL pin number for I2C communication.
   int speed_;           // The I2C bus speed in Hz.
 
-  icm20948_config_t config_;  // Configuration settings for the IMU sensor.
+  // icm20948_config_t config_;  // Configuration settings for the IMU sensor.
+  icm_20948_DMP_data_t dmp_data_; // Data from the Digital Motion Processor (DMP).
   icm20984_data_t data_;      // Data structure to store sensor readings.
-  madgwick_ahrs_t filter_;    // Data structure for sensor fusion algorithm.
+  // madgwick_ahrs_t filter_;    // Data structure for sensor fusion algorithm.
 
   float accel_g_[3];   // Acceleration measurements in g-force.
   float gyro_dps_[3];  // Gyroscope readings in degrees per second.
@@ -162,6 +188,7 @@ class IMU {
   float temp_c_;       // Temperature reading in degrees Celsius.
 
   bool has_new_data_;  // Flag indicating whether new sensor data is available.
+  Quaternion orientation_;  // Estimated orientation of the sensor.
 };
 
 #endif  // IMU_HPP

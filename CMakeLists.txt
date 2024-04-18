@@ -11,12 +11,14 @@ pico_sdk_init()
 include_directories(
     include
     src/imu
+    lib/SparkFun_ICM-20948_ArduinoLibrary/src/
 )
 
 
 link_directories(libmicroros)
 add_executable(deepdrive_micro
     src/main.cpp
+    # src/led_ring_main.c
 
     src/node.cpp
     src/control_loop.cpp
@@ -46,8 +48,8 @@ add_executable(deepdrive_micro
     src/pub_joint_state.cpp
 
     # IMU
-    src/imu/pico-icm20948.c
-    src/imu/MadgwickAHRS.c
+    lib/SparkFun_ICM-20948_ArduinoLibrary/src/util/ICM_20948_C.c
+    lib/SparkFun_ICM-20948_ArduinoLibrary/src/ICM_20948.cpp
 )
 
 # To add to this, here are examples: `cat /usr/src/pico-sdk/test/kitchen_sink/CMakeLists.txt | grep pwm`

@@ -115,7 +115,13 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Remove SPI + debugging from Sparkfun lib
+- IMU AD0 pin connect to address select
+- IMU calibration: https://github.com/mattwilliamson/deepdrive_micro/commit/6a417c4e63e32671b85648450a2366626a14d2dd#diff-97ccfa9770f9d7f64ec98c8791e52b315f7ed2c2cf4eb915823ea091dc1241d6R196 for accelerometer + gyro, just read a bunch of times and average it. that's the bias to set
+- IMU Shock detected
 - IMU Not working on PCB - 2 sda and 2 scl?
+- IMU Interrupts 
+- IMU Quaternion accuracy header
 - Publish Odom
 - Perhaps 2 nodes?
 - Bit shift pulse counter

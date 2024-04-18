@@ -81,13 +81,10 @@ class Node {
   rcl_publisher_t publisher_join_state;
   rcl_publisher_t publisher_imu;
   rcl_publisher_t publisher_mag;
-
   rcl_publisher_t publisher_odom;
 
-  control_msgs__msg__MecanumDriveControllerState
-      mgs_out_motor;  // TODO: Find the create function for this
-  sensor_msgs__msg__BatteryState
-      msg_out_battery;  // TODO: Find the create function for this
+  control_msgs__msg__MecanumDriveControllerState mgs_out_motor;  // TODO: Find the create function for this
+  sensor_msgs__msg__BatteryState msg_out_battery;  // TODO: Find the create function for this
   sensor_msgs__msg__JointState* msg_out_joint_state;
   sensor_msgs__msg__Imu* msg_out_imu;
   sensor_msgs__msg__MagneticField* msg_out_mag;
@@ -143,8 +140,6 @@ class Node {
   Node();
 
   // Run control loop in a separate core
-  // bool trigger_control(repeating_timer_t *rt);
-  // bool trigger_led_ring(repeating_timer_t *rt);
   void spin_control_loop();
   int start_control_loop();
 
