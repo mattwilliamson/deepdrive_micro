@@ -12,6 +12,7 @@ include_directories(
     include
     src/imu
     lib/SparkFun_ICM-20948_ArduinoLibrary/src/
+    lib/pico-icm20948/
 )
 
 
@@ -48,8 +49,10 @@ add_executable(deepdrive_micro
     src/pub_joint_state.cpp
 
     # IMU
-    lib/SparkFun_ICM-20948_ArduinoLibrary/src/util/ICM_20948_C.c
-    lib/SparkFun_ICM-20948_ArduinoLibrary/src/ICM_20948.cpp
+    # lib/SparkFun_ICM-20948_ArduinoLibrary/src/util/ICM_20948_C.c
+    # lib/SparkFun_ICM-20948_ArduinoLibrary/src/ICM_20948.cpp
+    lib/pico-icm20948/pico-icm20948.c
+    lib/pico-icm20948/MadgwickAHRS.c
 )
 
 # To add to this, here are examples: `cat /usr/src/pico-sdk/test/kitchen_sink/CMakeLists.txt | grep pwm`

@@ -7,6 +7,7 @@
 #define STATUS_HPP
 
 #include <cstdint>
+#include <string>
 
 extern "C" {
 #include "pico/multicore.h"
@@ -25,6 +26,7 @@ enum class Status {
     Success,      /**< Success status */
     Warning,      /**< Warning status */
     Error,        /**< Error status */
+    ErrorIMU,     /**< Error IMU status */
     Rebooted      /**< Rebooted status */
 };
 
@@ -60,11 +62,31 @@ class StatusManager {
      */
     StatusManager();
 
+    /**
+     * @brief Sets the error string associated with the current status.
+     * @param error The error string to set.
+     */
+
+    void setErrorString(const std::string& error) {
+        errorString = error;
+    }
+
+    /**
+     * @brief Gets the error string associated with the current status.
+     * @return The error string.
+     */
+    std::string getErrorString() const {
+        return errorString;
+    }
+
  private:
+    std::string errorString; /**< The error string associated with the current status. */
+
     StatusManager(const StatusManager&) = delete;
     StatusManager& operator=(const StatusManager&) = delete;
 
     Status status; /**< The current status. */
+    
 };
 
 #endif  // STATUS_HPP

@@ -60,6 +60,9 @@ Node::Node() {
   led_ring.start();
   led_status_init();
 
+   // Diagnostic publisher
+  init_diagnostic();
+
   // Params server (currently not working)
   init_param_server();
 
@@ -68,27 +71,36 @@ Node::Node() {
   init_battery();
 
   // IMU publisher
+  status.setErrorString("Init IMU");
+  publish_diagnostic();
   init_imu();
 
   // Motor publisher
+  status.setErrorString("Init motor publisher");
+  publish_diagnostic();
   init_motor_pub();
 
-  // Diagnostic publisher
-  init_diagnostic();
-
   // Odom publisher
+  status.setErrorString("Init odom");
+  publish_diagnostic();
   init_odom();
 
   // Joint State publisher
+  status.setErrorString("Init joint state");
+  publish_diagnostic();
   init_joint_state();
 
 
   status.set(Status::Connected);
 
   // Twist Subscriber
+  status.setErrorString("Init cmd vel");
+  publish_diagnostic();
   RCCHECK(init_cmd_vel());
 
   // Start Motors
+  status.setErrorString("Init Motors");
+  publish_diagnostic();
   RCCHECK(init_motors());
 
   status.set(Status::Connected);

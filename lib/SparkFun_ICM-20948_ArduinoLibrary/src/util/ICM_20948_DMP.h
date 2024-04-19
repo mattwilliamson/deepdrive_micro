@@ -533,6 +533,7 @@ extern "C"
 #define icm_20948_DMP_Secondary_On_Off_Bytes 2
 #define icm_20948_DMP_Footer_Bytes 2
 #define icm_20948_DMP_Maximum_Bytes 14 // The most bytes we will attempt to read from the FIFO in one go
+// #define icm_20948_DMP_Maximum_Bytes 100 // The most bytes we will attempt to read from the FIFO in one go
 
   typedef struct
   {

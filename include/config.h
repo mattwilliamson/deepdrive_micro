@@ -165,6 +165,7 @@
 
 #define DIAGNOSTIC_FRAME "base_link"
 #define DIAGNOSTIC_COUNT 1
+#define DIAGNOSTIC_ROWS 4
 
 // END DIAGNOSTICS
 // ----------------------------------

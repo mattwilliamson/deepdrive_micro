@@ -115,40 +115,47 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+
+- Publish Odom
+- IMU Retries
+- Set status string fro diagnostic
+- handle twist properly
+- don't arm motors until ready
+- Mutex on Odom pub vs calculation
+
+- speed up publishing with static memory https://github.com/micro-ROS/micro-ROS-demos/blob/humble/rclc/static_type_handling/main.c https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
+
+- if a motor is not getting any pulses after some time, raise some kind of error and stop
+
+- change led ring to 3pin?
+- clear petg led ring fresnel lens
+- 3m screws for led cover
 - Remove SPI + debugging from Sparkfun lib
+fast hz for quaternion?
 - IMU AD0 pin connect to address select
 - IMU calibration: https://github.com/mattwilliamson/deepdrive_micro/commit/6a417c4e63e32671b85648450a2366626a14d2dd#diff-97ccfa9770f9d7f64ec98c8791e52b315f7ed2c2cf4eb915823ea091dc1241d6R196 for accelerometer + gyro, just read a bunch of times and average it. that's the bias to set
 - IMU Shock detected
 - IMU Not working on PCB - 2 sda and 2 scl?
 - IMU Interrupts 
 - IMU Quaternion accuracy header
-- Publish Odom
+- 5v usb separate from led ring? good or bad?
 - Perhaps 2 nodes?
 - Bit shift pulse counter
-- Mutex on Odom pub vs calculation
 - either move pico to center or add cutout for usb connector, it's putting pressure on the connector
-- don't arm motors until ready
 - move led string header
 - dim LEDs
 - fan says 5v but is actually 3v3 pwm
-- rubber spacer for pcb screws
-- double check velocity is correct. we are maxing out at .58m/s
+- tpu spacer gasket for pcb screws
+- tpu gasket for behind camera
 - publish twistwithcovariancestamped instead of odom?
 - robot_localization
-- speed up publishing with static memory https://github.com/micro-ROS/micro-ROS-demos/blob/humble/rclc/static_type_handling/main.c
-- refactor publishers into separate files
-- publish odom
-- handle twist messages / - subscribe to cmd commands
-- icm20948 has a dmp onboard. use sparkfun portable library: https://github.com/sparkfun/SparkFun_ICM-20948_ArduinoLibrary
-    rewrite driver to use their sdk instead of generating a quaternion on cpu @ 100+hz
 - timeout i2c for imu so it doesn't freeze everything
 - power on self test (thinking about IMU here)
 - scaling imu output (Gs) - we don't need 8 Gs worth of scale
 - imu is sampling at 100hz, but our control loop is 50hz - not a problem if we do onboard dmp
 - adc_ref not connected.
 - add icm20948 to pcb
-- check ADC_VREF == 3.3 V
-- if a motor is not getting any pulses after some time, raise some kind of error and stop
+
 - param server for pid, speed, etc - mostly coded, just needs to fix the build
 - use flash to save params
 - use mutex to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex

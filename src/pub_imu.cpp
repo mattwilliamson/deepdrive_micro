@@ -17,19 +17,31 @@ int Node::init_imu() {
   msg_out_mag = sensor_msgs__msg__MagneticField__create();
   msg_out_mag->header.frame_id = micro_ros_string_utilities_init(IMU_FRAME);
 
-  if (imu.start() != 0) {
-    printf("IMU start failed\r\n");
-    return 1;
-  }
+  int8_t imu_status = -1;
 
-  // Calibrate the IMU
-  imu.calibrate();
-  // TODO: Save the compass calibration to EEPROM or flash or something and
-  // expose a service to trigger it
+  // Try to connect to the IMU 20 times
+  for (int i = 0; i < 20; i++) {
+    imu_status = imu.start();
+    if (imu_status == 0) {
+      status.set(Status::Connected);
+
+      // Calibrate the IMU
+      imu.calibrate();
+      // TODO: Save the compass calibration to EEPROM or flash or something and
+      // expose a service to trigger it
+      return 0;
+    } else {
+      status.set(Status::ErrorIMU);
+      const char * imu_status_string = imu.statusString();
+      status.setErrorString(imu_status_string);
+      // printf("IMU start failed\r\n");
+      sleep_ms(1000);
+    }
+  }
 
 #endif
 
-  return 0;
+  return imu_status;
 }
 
 void Node::publish_imu() {
@@ -38,25 +50,25 @@ void Node::publish_imu() {
   msg_out_imu->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
   msg_out_imu->header.stamp.nanosec = rmw_uros_epoch_nanos();
 
-  // Vector3 accel = imu.getAccel();
+  Vector3 accel = imu.getAccel();
 
-  // msg_out_imu->linear_acceleration.x = accel.x;
-  // msg_out_imu->linear_acceleration.y = accel.y;
-  // msg_out_imu->linear_acceleration.z = accel.z;
+  msg_out_imu->linear_acceleration.x = accel.x;
+  msg_out_imu->linear_acceleration.y = accel.y;
+  msg_out_imu->linear_acceleration.z = accel.z;
 
-  // msg_out_imu->linear_acceleration_covariance[0] = 0.001;
-  // msg_out_imu->linear_acceleration_covariance[4] = 0.001;
-  // msg_out_imu->linear_acceleration_covariance[8] = 0.001;
+  msg_out_imu->linear_acceleration_covariance[0] = 0.001;
+  msg_out_imu->linear_acceleration_covariance[4] = 0.001;
+  msg_out_imu->linear_acceleration_covariance[8] = 0.001;
 
-  // Vector3 gyro = imu.getGyro();
+  Vector3 gyro = imu.getGyro();
 
-  // msg_out_imu->angular_velocity.x = gyro.x;
-  // msg_out_imu->angular_velocity.y = gyro.y;
-  // msg_out_imu->angular_velocity.z = gyro.z;
+  msg_out_imu->angular_velocity.x = gyro.x;
+  msg_out_imu->angular_velocity.y = gyro.y;
+  msg_out_imu->angular_velocity.z = gyro.z;
 
-  // msg_out_imu->angular_velocity_covariance[0] = 0.001;
-  // msg_out_imu->angular_velocity_covariance[4] = 0.001;
-  // msg_out_imu->angular_velocity_covariance[8] = 0.001;
+  msg_out_imu->angular_velocity_covariance[0] = 0.001;
+  msg_out_imu->angular_velocity_covariance[4] = 0.001;
+  msg_out_imu->angular_velocity_covariance[8] = 0.001;
 
   Quaternion orientation = imu.getOrientation();
 
@@ -70,10 +82,10 @@ void Node::publish_imu() {
   msg_out_imu->orientation_covariance[8] = 0.001;
 
   // For testing
-  auto euler = IMU::quaternianToEuler(orientation);
-  msg_out_imu->linear_acceleration.x = euler[0];
-  msg_out_imu->linear_acceleration.y = euler[1];
-  msg_out_imu->linear_acceleration.z = euler[2];
+  // auto euler = IMU::quaternianToEuler(orientation);
+  // msg_out_imu->linear_acceleration.x = euler[0];
+  // msg_out_imu->linear_acceleration.y = euler[1];
+  // msg_out_imu->linear_acceleration.z = euler[2];
 
   // msg_out_imu->linear_acceleration_covariance[0] = 0.001;
   // msg_out_imu->linear_acceleration_covariance[4] = 0.001;

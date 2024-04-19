@@ -2,7 +2,7 @@
 #define IMU_HPP
 
 #include "config.h"
-#include "ICM_20948.h"
+// #include "ICM_20948.h"
 
 // https://invensense.tdk.com/download-pdf/icm-20948-datasheet/
 
@@ -26,21 +26,23 @@
 extern "C" {
 #include "hardware/i2c.h"
 #include "pico/stdlib.h"
+#include "pico-icm20948.h"
+#include "MadgwickAHRS.h"
 }
 
 #include <cmath>
 #include <array>
 
-typedef struct icm20984_data {
-    // 0: x, 1: y, 2: z
-    int16_t accel_raw[3];
-    int16_t accel_bias[3];
-    int16_t gyro_raw[3];
-    int16_t gyro_bias[3];
-    int16_t mag_raw[3];
-    int16_t mag_bias[3];
-    float temp_c;
-} icm20984_data_t;
+// typedef struct icm20984_data {
+//     // 0: x, 1: y, 2: z
+//     int16_t accel_raw[3];
+//     int16_t accel_bias[3];
+//     int16_t gyro_raw[3];
+//     int16_t gyro_bias[3];
+//     int16_t mag_raw[3];
+//     int16_t mag_bias[3];
+//     float temp_c;
+// } icm20984_data_t;
 
 
 struct Vector3 {
@@ -59,7 +61,7 @@ struct Quaternion {
 enum ImuErrorCode {
   OK = 0,
   DMP_FAILED = 1,
-  I2C_TIMEOUT = 2,
+  // I2C_TIMEOUT = 2,
   NO_DATA = 3,
   ERROR = 4,
   INIT = -1
@@ -166,8 +168,22 @@ class IMU {
    */
   Quaternion getOrientation();
 
+  /**
+   * @brief Retrieves a string representation of the sensor status.
+   *
+   * @return A string describing the current status of the sensor.
+   */
+  const char * statusString() {
+    // return imu_.statusString();
+    return "";
+  }
+
  private:
-  ICM_20948_I2C imu_;
+  // ICM_20948_I2C imu_;
+
+  icm20948_config_t config_;
+  madgwick_ahrs_t filter_ = {0.5f, {1.0f, 0.0f, 0.0f, 0.0f}};
+  icm20984_data_t data_;      // Data structure to store sensor readings.
 
   i2c_inst_t i2c_;  // The I2C instance used for communication with the IMU sensor.
   uint8_t address_;     // The I2C address of the IMU sensor.
@@ -177,10 +193,7 @@ class IMU {
   int i2c_scl_;         // The SCL pin number for I2C communication.
   int speed_;           // The I2C bus speed in Hz.
 
-  // icm20948_config_t config_;  // Configuration settings for the IMU sensor.
-  icm_20948_DMP_data_t dmp_data_; // Data from the Digital Motion Processor (DMP).
-  icm20984_data_t data_;      // Data structure to store sensor readings.
-  // madgwick_ahrs_t filter_;    // Data structure for sensor fusion algorithm.
+  // icm_20948_DMP_data_t dmp_data_; // Data from the Digital Motion Processor (DMP).
 
   float accel_g_[3];   // Acceleration measurements in g-force.
   float gyro_dps_[3];  // Gyroscope readings in degrees per second.
