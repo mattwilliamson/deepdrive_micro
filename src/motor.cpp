@@ -66,11 +66,20 @@ void Motor::disable() {
 void Motor::readPulses() {
   // TODO: Should I keep a couple loops worth and average the pulses?
 
-  // TODO: See if we can make this atomic somehow to avoid missing pulses
-  int newPulses = pulse_count_map[encoderPin_];
+  // Bitshift left to avoid getting incremented by the ISR while we are trying to get out the value
+  pulse_count_map[encoderPin_] << 16;
+  uint32_t newPulses = pulse_count_map[encoderPin_] & 0xFFFF0000;
+  // clear out the left 16 bits to reset
+  pulse_count_map[encoderPin_] &= 0x0000FFFF;
+  
+
+  // ------------------------------------------------
+  // This version is a known working reference
+  // int newPulses = pulse_count_map[encoderPin_];
 
   // Reset counter
-  pulse_count_map[encoderPin_] = 0;
+  // pulse_count_map[encoderPin_] = 0;
+  // ------------------------------------------------
 
   // Calculate speed for a whole second
   speed_ = newPulses * CONTROL_LOOP_HZ * direction_;

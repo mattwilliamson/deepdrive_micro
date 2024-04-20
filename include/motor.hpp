@@ -28,7 +28,7 @@ static bool gpio_callbacks_configured = false;
 // TODO: Prune this down to use less memory, an array is fast for now, just wasting some ints in memory
 
 // Map of pin number to pulse count
-static volatile int pulse_count_map[30] = {};
+static volatile uint32_t pulse_count_map[30] = {};
 
 // Got some help from https://cocode.se/linux/raspberry/pwm.html
 

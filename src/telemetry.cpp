@@ -24,6 +24,9 @@ void Node::spin_telemetry_loop(rcl_timer_t* timer_main_loop, int64_t last_call_t
 
   rmw_ret_t error_code = rmw_uros_ping_agent(timeout_ms, attempts);
 
+  // TODO: Probably want to check other criteria when disabling motors
+  // TODO: Check if two motors on the same side have similar speeds
+
   if (error_code != RMW_RET_OK) {
     status.set(Status::Error);
     disable_motors();

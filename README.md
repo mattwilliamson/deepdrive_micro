@@ -119,7 +119,7 @@ front_right_wheel_velocity  89018
 - ping agent and stop motors if it fails
 - Publish Odom
 - IMU Retries
-- Set status string fro diagnostic
+- Set status string for diagnostic
 - handle twist properly
 - don't arm motors until ready
 - Mutex on Odom pub vs calculation
