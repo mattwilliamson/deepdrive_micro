@@ -52,6 +52,7 @@ extern "C" {
 #include "led_ring.hpp"
 #include "motor.hpp"
 #include "status.hpp"
+#include "quaternion.hpp"
 
 #define MICROSECONDS 1e6
 #define MILLISECONDS 1e3
@@ -203,6 +204,7 @@ class Node {
 
   // Odom publisher
   int init_odom();
+  void calculate_odom();
   void publish_odom();
 
   // Battery publisher
@@ -211,6 +213,7 @@ class Node {
 
   // Joint State publisher
   int init_joint_state();
+  void calculate_joint_state();
   void publish_joint_state();
 
   // IMU publisher

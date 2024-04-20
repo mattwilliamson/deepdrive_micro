@@ -34,7 +34,9 @@ int Node::init_joint_state() {
   return 0;
 }
 
-void Node::publish_joint_state() {
+
+
+void Node::calculate_joint_state() {
   /**
    * The state of each joint (revolute or prismatic) is defined by:
    *  * the position of the joint (rad or m),
@@ -45,11 +47,12 @@ void Node::publish_joint_state() {
   msg_out_joint_state->header.stamp.nanosec = rmw_uros_epoch_nanos();
 
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    msg_out_joint_state->position.data[i] = motors[i]->getPosition(); // Exception here
+    msg_out_joint_state->position.data[i] = motors[i]->getPosition();
     msg_out_joint_state->velocity.data[i] = motors[i]->getSpeedRadians();
-    // msg_out_joint_state->effort.data[i] =
-    // motors[i]->getSpeedMetersPerSecond();
   }
+}
 
+
+void Node::publish_joint_state() {
   RCSOFTCHECK(rcl_publish(&publisher_join_state, msg_out_joint_state, NULL));
 }

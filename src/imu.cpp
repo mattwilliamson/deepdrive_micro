@@ -250,20 +250,20 @@ int8_t IMU::calibrate() {
   return 0;
 }
 
-std::array<float, 3> IMU::quaternianToEuler(const Quaternion& quaternion) {
-  std::array<float, 3> euler;
-  euler[0] = -1.0f * asinf(2.0f * (quaternion.x) * (quaternion.z) +
-                           2.0f * (quaternion.w) * (quaternion.y));
-  euler[1] = atan2f(
-      2.0f * (quaternion.y) * (quaternion.z) - 2.0f * (quaternion.w) * (quaternion.x),
-      2.0f * (quaternion.w) * (quaternion.w) + 2.0f * (quaternion.z) * (quaternion.z) -
-          1.0f);
-  euler[2] = atan2f(
-      2.0f * (quaternion.x) * (quaternion.y) - 2.0f * (quaternion.w) * (quaternion.z),
-      2.0f * (quaternion.w) * (quaternion.w) + 2.0f * (quaternion.x) * (quaternion.x) -
-          1.0f);
-  return euler;
-}
+// std::array<float, 3> IMU::quaternianToEuler(const Quaternion& quaternion) {
+//   std::array<float, 3> euler;
+//   euler[0] = -1.0f * asinf(2.0f * (quaternion.x) * (quaternion.z) +
+//                            2.0f * (quaternion.w) * (quaternion.y));
+//   euler[1] = atan2f(
+//       2.0f * (quaternion.y) * (quaternion.z) - 2.0f * (quaternion.w) * (quaternion.x),
+//       2.0f * (quaternion.w) * (quaternion.w) + 2.0f * (quaternion.z) * (quaternion.z) -
+//           1.0f);
+//   euler[2] = atan2f(
+//       2.0f * (quaternion.x) * (quaternion.y) - 2.0f * (quaternion.w) * (quaternion.z),
+//       2.0f * (quaternion.w) * (quaternion.w) + 2.0f * (quaternion.x) * (quaternion.x) -
+//           1.0f);
+//   return euler;
+// }
 
 ImuErrorCode IMU::read() {
   icm20948_read_raw_accel(&config_, data_.accel_raw);
@@ -292,7 +292,7 @@ ImuErrorCode IMU::read() {
                      mag_ut_[1], mag_ut_[2]);
 
   has_new_data_ = true;
-  orientation_ = {filter_.q[0], filter_.q[1], filter_.q[2], filter_.q[3]};
+  orientation_ = Quaternion(filter_.q[0], filter_.q[1], filter_.q[2], filter_.q[3]);
 
   return ImuErrorCode::OK;
 

@@ -2,6 +2,8 @@
 #define IMU_HPP
 
 #include "config.h"
+#include "quaternion.hpp"
+
 // #include "ICM_20948.h"
 
 // https://invensense.tdk.com/download-pdf/icm-20948-datasheet/
@@ -46,17 +48,11 @@ extern "C" {
 
 
 struct Vector3 {
-  float x;
-  float y;
-  float z;
-};
-
-struct Quaternion {
-  double w;
   double x;
   double y;
   double z;
 };
+
 
 enum ImuErrorCode {
   OK = 0,
@@ -67,8 +63,8 @@ enum ImuErrorCode {
   INIT = -1
 };
 
-const float RAD_TO_DEG = 57.29578;
-const float GRAVITY = 9.81;
+const double RAD_TO_DEG = 57.29578;
+const double GRAVITY = 9.81;
 
 /**
  * @brief Represents an Inertial Measurement Unit (IMU) sensor.
@@ -126,15 +122,6 @@ class IMU {
    */
   ImuErrorCode read();
 
-  /**
-   * @brief Converts the quaternion representation of orientation to Euler
-   * angles.
-   *
-   * @param data Pointer to the data structure containing the quaternion
-   * representation of orientation.
-   * @param euler Array to store the resulting Euler angles.
-   */
-  static std::array<float, 3> quaternianToEuler(const Quaternion& quaternion);
 
   /**
    * @brief Retrieves the acceleration measurements from the IMU sensor.
@@ -195,10 +182,10 @@ class IMU {
 
   // icm_20948_DMP_data_t dmp_data_; // Data from the Digital Motion Processor (DMP).
 
-  float accel_g_[3];   // Acceleration measurements in g-force.
-  float gyro_dps_[3];  // Gyroscope readings in degrees per second.
-  float mag_ut_[3];    // Magnetometer readings in microteslas.
-  float temp_c_;       // Temperature reading in degrees Celsius.
+  double accel_g_[3];   // Acceleration measurements in g-force.
+  double gyro_dps_[3];  // Gyroscope readings in degrees per second.
+  double mag_ut_[3];    // Magnetometer readings in microteslas.
+  double temp_c_;       // Temperature reading in degrees Celsius.
 
   bool has_new_data_;  // Flag indicating whether new sensor data is available.
   Quaternion orientation_;  // Estimated orientation of the sensor.

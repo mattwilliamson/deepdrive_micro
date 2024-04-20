@@ -60,6 +60,9 @@ void Node::spin_control_loop() {
     // TODO: Do other processing here to make publishing on core0 as fast as
     // possible e.g. calculate odometry, publish sensor data, etc.
 
+    calculate_joint_state();
+    calculate_odom();
+
     // Sit tight until we have more work to do
     tight_loop_contents();
     // sleep_ms(1);

@@ -53,6 +53,7 @@ class Motor {
 
   // diameter of the wheel in micrometers
   static const Micrometers WHEEL_DIAMETER = 89 * MICRO_METERS / MILLI_METERS;
+  static const Micrometers WHEEL_RADIUS = WHEEL_DIAMETER / 2.0;
 
   // distance between left and right wheels
   static const Micrometers WHEEL_BASE = 240 * MICRO_METERS / MILLI_METERS;

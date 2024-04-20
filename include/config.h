@@ -87,6 +87,9 @@
 #define MOTOR_JOIN_FRONT_RIGHT "wheel_front_right_joint"
 #define MOTOR_JOIN_BACK_RIGHT "wheel_back_right_joint"
 
+#define MOTOR_LEFT 0
+#define MOTOR_RIGHT 1
+
 // END MOTORS
 // ----------------------------------
 

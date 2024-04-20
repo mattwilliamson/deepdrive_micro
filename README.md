@@ -115,7 +115,8 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-
+- mislabeled swd to uart on pcb?
+- ping agent and stop motors if it fails
 - Publish Odom
 - IMU Retries
 - Set status string fro diagnostic

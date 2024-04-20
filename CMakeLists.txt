@@ -35,6 +35,7 @@ add_executable(deepdrive_micro
     src/analog_sensors.cpp
     src/param_server.cpp
     src/watchdog.cpp
+    src/quaternion.cpp
 
     # Subscribers
     src/sub_cmd_vel.cpp
