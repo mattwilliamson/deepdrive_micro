@@ -3,15 +3,23 @@
 int Node::init_motors() {
   // Setup 4 ESC brushless motor controllers
   motors.resize(MOTOR_COUNT);
-  motors[IDX_MOTOR_FRONT_LEFT] =
-      new Motor(PIN_MOTOR_FRONT_LEFT, PIN_ENCODER_FRONT_LEFT);
-  motors[IDX_MOTOR_BACK_LEFT] =
-      new Motor(PIN_MOTOR_BACK_LEFT, PIN_ENCODER_BACK_LEFT);
-  motors[IDX_MOTOR_FRONT_RIGHT] =
-      new Motor(PIN_MOTOR_FRONT_RIGHT, PIN_ENCODER_FRONT_RIGHT);
-  motors[IDX_MOTOR_BACK_RIGHT] =
-      new Motor(PIN_MOTOR_BACK_RIGHT, PIN_ENCODER_BACK_RIGHT);
+  motors[IDX_MOTOR_FRONT_LEFT] = new Motor(PIN_MOTOR_FRONT_LEFT, PIN_ENCODER_FRONT_LEFT);
+  motors[IDX_MOTOR_BACK_LEFT] = new Motor(PIN_MOTOR_BACK_LEFT, PIN_ENCODER_BACK_LEFT);
+  motors[IDX_MOTOR_FRONT_RIGHT] = new Motor(PIN_MOTOR_FRONT_RIGHT, PIN_ENCODER_FRONT_RIGHT);
+  motors[IDX_MOTOR_BACK_RIGHT] = new Motor(PIN_MOTOR_BACK_RIGHT, PIN_ENCODER_BACK_RIGHT);
   return 0;
+}
+
+void Node::disable_motors() {
+  for (auto &motor : motors) {
+    motor->disable();
+  }
+}
+
+void Node::enable_motors() {
+  for (auto &motor : motors) {
+    motor->enable();
+  }
 }
 
 Node::Node() {
@@ -39,15 +47,11 @@ Node::Node() {
   // rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
 
   init_main_loop();
+  init_telemetry_loop();
 
-  // Number of uRosHandles allocated in the executor (1 timer, 1 subscription,
-  // 6 publisher)
-  // TODO: Increment these memory handles
-  // const size_t uRosHandles = 12 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
-  const size_t uRosHandles = 20;
   executor = rclc_executor_get_zero_initialized_executor();
   rclc_executor_init(&executor, &support.context, uRosHandles, &allocator);
-  
+
   // stdio_init_all(); // Called by uros
   init_watchdog();
 
@@ -60,7 +64,7 @@ Node::Node() {
   led_ring.start();
   led_status_init();
 
-   // Diagnostic publisher
+  // Diagnostic publisher
   init_diagnostic();
 
   // Params server (currently not working)
@@ -90,7 +94,6 @@ Node::Node() {
   publish_diagnostic();
   init_joint_state();
 
-
   status.set(Status::Connected);
 
   // Twist Subscriber
@@ -116,13 +119,17 @@ void Node::spin() {
   error_code = start_main_loop();
   RCCHECK(error_code);
 
+  // Telemtry loop is on a timer inside rclc_executor
+  error_code = start_telemetry_loop();
+  RCCHECK(error_code);
+
   // Spin the executor on this core to pub/sub to ROS
   while (true) {
 #ifdef WATCHDOG_ENABLED
     watchdog_update();
 #endif
 
-  // rclc_executor_spin(&executor);
+    // rclc_executor_spin(&executor);
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
 
     // TODO: Timer to monitor agent?

@@ -89,6 +89,11 @@ class Motor {
   Motor(int pin, int encoderPin);
 
   /**
+   * @brief Start the motor.
+   */
+  void start();
+
+  /**
    * @brief Stop the motor.
    */
   void stop();

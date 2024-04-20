@@ -21,21 +21,25 @@ add_executable(deepdrive_micro
     src/main.cpp
     # src/led_ring_main.c
 
+    src/pico_uart_transport.c
+
     src/node.cpp
     src/control_loop.cpp
     src/main_loop.cpp
 
-    src/pico_uart_transport.c
+    src/param_server.cpp
+    src/telemetry.cpp
+    src/status.cpp
+
     src/led_ring.cpp
     src/led_status.c
-    src/status.cpp
     src/motor.cpp
     src/imu.cpp
     src/pid.cpp
     src/analog_sensors.cpp
-    src/param_server.cpp
     src/watchdog.cpp
     src/quaternion.cpp
+    
 
     # Subscribers
     src/sub_cmd_vel.cpp

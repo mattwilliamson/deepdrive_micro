@@ -53,6 +53,4 @@ void Node::spin_main_loop(rcl_timer_t *timer, int64_t last_call_time) {
   publish_odom();
 
   core_elapsed[0] = time_us_64() - core_start[0];
-
-  publish_diagnostic();
 }

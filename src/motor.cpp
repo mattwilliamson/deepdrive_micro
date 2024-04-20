@@ -25,7 +25,7 @@ Motor::Motor(int pin, int encoderPin) {
   enable();
 }
 
-void Motor::enable() {
+void Motor::start() {
   gpio_init(pin_);
   gpio_set_dir(pin_, GPIO_OUT);
   gpio_set_function(pin_, GPIO_FUNC_PWM);
@@ -33,7 +33,7 @@ void Motor::enable() {
   channel_ = pwm_gpio_to_channel(pin_);
   pwm_set_clkdiv(slice_, 256.0f);
   pwm_set_wrap(slice_, 9804);  // 20 ms
-  pwm_set_enabled(slice_, true);
+  // pwm_set_enabled(slice_, true);
 
   // Handle encoder pulses, -1 means no encoder
   if (encoderPin_ != -1) {
@@ -51,6 +51,17 @@ void Motor::enable() {
   // Stop the motor initially
   stop();
 }
+
+void Motor::enable() {
+  stop();
+  pwm_set_enabled(slice_, true);
+}
+
+void Motor::disable() {
+  stop();
+  pwm_set_enabled(slice_, false);
+}
+
 
 void Motor::readPulses() {
   // TODO: Should I keep a couple loops worth and average the pulses?
@@ -77,8 +88,6 @@ int16_t Motor::calculatePid() {
 
   return output;
 }
-
-void Motor::disable() { pwm_set_enabled(slice_, false); }
 
 void Motor::setSpeedSignal(Pulses speed) {
   // Set output from the PID controller to pwm out

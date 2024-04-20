@@ -12,13 +12,6 @@ extern "C" {
 // Error codes can be found in
 // micro_ros_raspberrypi_pico_sdk/libmicroros/include/rcl/types.h
 // and micro_ros_raspberrypi_pico_sdk/libmicroros/include/rmw/ret_types.h
-#include <rcl/error_handling.h>
-#include <rcl/rcl.h>
-#include <rclc/executor.h>
-#include <rclc_parameter/rclc_parameter.h>
-#include <rmw_microros/rmw_microros.h>
-#include <rosidl_runtime_c/sequence_bound.h>
-
 #include <control_msgs/msg/mecanum_drive_controller_state.h>
 #include <diagnostic_msgs/msg/diagnostic_array.h>
 #include <diagnostic_msgs/msg/diagnostic_status.h>
@@ -27,7 +20,13 @@ extern "C" {
 #include <geometry_msgs/msg/twist.h>
 #include <micro_ros_utilities/string_utilities.h>
 #include <nav_msgs/msg/odometry.h>
+#include <rcl/error_handling.h>
+#include <rcl/rcl.h>
+#include <rclc/executor.h>
+#include <rclc_parameter/rclc_parameter.h>
+#include <rmw_microros/rmw_microros.h>
 #include <rosidl_runtime_c/primitives_sequence_functions.h>
+#include <rosidl_runtime_c/sequence_bound.h>
 #include <rosidl_runtime_c/string.h>
 #include <rosidl_runtime_c/string_functions.h>
 #include <sensor_msgs/msg/battery_state.h>
@@ -51,8 +50,8 @@ extern "C" {
 #include "imu.hpp"
 #include "led_ring.hpp"
 #include "motor.hpp"
-#include "status.hpp"
 #include "quaternion.hpp"
+#include "status.hpp"
 
 #define MICROSECONDS 1e6
 #define MILLISECONDS 1e3
@@ -60,21 +59,28 @@ extern "C" {
 /**
  * @class Node
  * @brief Represents a node in the ROS (Robot Operating System) framework.
- * 
+ *
  * The Node class encapsulates the functionality of a ROS node, including publishers, subscribers, timers, and other components.
  * It provides methods for initializing and starting the control loop and the main loop, as well as various initialization methods for publishers and subscribers.
  * The class also includes error handling functions for uROS (micro ROS) operations.
- * 
+ *
  * @note This class follows the Singleton design pattern, ensuring that only one instance of the Node class can exist.
  */
 class Node {
  public:
+  // Number of uRosHandles allocated in the executor (1 timer, 1 subscription,
+  // 6 publisher)
+  // TODO: Increment these memory handles
+  // const size_t uRosHandles = 12 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
+  const size_t uRosHandles = 20;
+
   // rcl_init_options_t init_options;
-  rcl_timer_t timer_main_loop;
   rcl_node_t node;
   rcl_allocator_t allocator;
   rclc_support_t support;
   rclc_executor_t executor;
+  rcl_timer_t timer_main_loop;
+  rcl_timer_t timer_telemetry_loop;
   rclc_parameter_server_t param_server;
 
   rcl_publisher_t publisher_motor;
@@ -85,7 +91,7 @@ class Node {
   rcl_publisher_t publisher_odom;
 
   control_msgs__msg__MecanumDriveControllerState mgs_out_motor;  // TODO: Find the create function for this
-  sensor_msgs__msg__BatteryState msg_out_battery;  // TODO: Find the create function for this
+  sensor_msgs__msg__BatteryState msg_out_battery;                // TODO: Find the create function for this
   sensor_msgs__msg__JointState* msg_out_joint_state;
   sensor_msgs__msg__Imu* msg_out_imu;
   sensor_msgs__msg__MagneticField* msg_out_mag;
@@ -160,7 +166,6 @@ class Node {
   // Top level main loop
   void spin();
 
-  
   /**
    * Initializes the motors.
    *
@@ -171,6 +176,15 @@ class Node {
    *         A return value of 0 indicates success, while a non-zero value indicates failure.
    */
   int init_motors();
+
+  void disable_motors();
+
+  void enable_motors();
+
+  // Telemetry
+  int init_telemetry_loop();
+  int start_telemetry_loop();
+  void spin_telemetry_loop(rcl_timer_t* timer_telemetry_loop, int64_t last_call_time);
 
   // Watchdog
   void init_watchdog();

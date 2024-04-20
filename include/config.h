@@ -16,6 +16,7 @@
 // #define CONTROL_LOOP_HZ 1.0
 #define CONTROL_LOOP_HZ 50
 #define MAIN_LOOP_HZ 20
+#define TELEMETRY_LOOP_HZ 2
 
 // Comment out to disable
 // #define WATCHDOG_ENABLED 1
