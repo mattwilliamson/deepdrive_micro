@@ -115,37 +115,23 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-- mislabeled swd to uart on pcb?
-- ping agent and stop motors if it fails
 - Publish Odom
 - IMU Retries
 - Set status string for diagnostic
 - handle twist properly
 - don't arm motors until ready
 - Mutex on Odom pub vs calculation
-
-- speed up publishing with static memory https://github.com/micro-ROS/micro-ROS-demos/blob/humble/rclc/static_type_handling/main.c https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
-
 - if a motor is not getting any pulses after some time, raise some kind of error and stop
 
-- change led ring to 3pin?
 - clear petg led ring fresnel lens
 - 3m screws for led cover
-- Remove SPI + debugging from Sparkfun lib
-fast hz for quaternion?
 - IMU AD0 pin connect to address select
 - IMU calibration: https://github.com/mattwilliamson/deepdrive_micro/commit/6a417c4e63e32671b85648450a2366626a14d2dd#diff-97ccfa9770f9d7f64ec98c8791e52b315f7ed2c2cf4eb915823ea091dc1241d6R196 for accelerometer + gyro, just read a bunch of times and average it. that's the bias to set
 - IMU Shock detected
 - IMU Not working on PCB - 2 sda and 2 scl?
 - IMU Interrupts 
 - IMU Quaternion accuracy header
-- 5v usb separate from led ring? good or bad?
-- Perhaps 2 nodes?
-- Bit shift pulse counter
-- either move pico to center or add cutout for usb connector, it's putting pressure on the connector
-- move led string header
-- dim LEDs
-- fan says 5v but is actually 3v3 pwm
+
 - tpu spacer gasket for pcb screws
 - tpu gasket for behind camera
 - publish twistwithcovariancestamped instead of odom?
@@ -154,14 +140,13 @@ fast hz for quaternion?
 - power on self test (thinking about IMU here)
 - scaling imu output (Gs) - we don't need 8 Gs worth of scale
 - imu is sampling at 100hz, but our control loop is 50hz - not a problem if we do onboard dmp
-- adc_ref not connected.
-- add icm20948 to pcb
 
 - param server for pid, speed, etc - mostly coded, just needs to fix the build
 - use flash to save params
 - use mutex to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
-- use mutex to lock pulses? probably better to bit shift left, and AND the right bits
-- send status string
+
+- Perhaps 2 nodes?
+- speed up publishing with static memory https://github.com/micro-ROS/micro-ROS-demos/blob/humble/rclc/static_type_handling/main.c https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
 
 
 
@@ -171,11 +156,5 @@ fast hz for quaternion?
 - back right encoder is giving some noisy pulse counts (there was a solder bridge)
 - tune pid controller - output speed might not be correct (might not be estimating speed accurately)
 
-
-### ADC
-- ADC_AVDD should be decoupled with a 100nF capacitor close to the chip’s ADC_AVDD pin.
-- ADC_AVDD can use from the same power source as the digital IO supply (IOVDD)
-- IOVDD, VREG_VIN = 3.3v 
-- reset button on pin 30 RUN that pulls it low
 - Driving high the SMPS mode pin (GPIO23), to force the power supply into PWM mode, can greatly reduce the - inherent ripple of the SMPS at light load, and therefore the ripple on the ADC supply. This does reduce the - power efficiency of the board at light load, so the low-power PFM mode can be re-enabled between infrequent ADC - measurements by driving GPIO23 low once more. See Section 4.4.
 

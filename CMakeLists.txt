@@ -16,7 +16,7 @@ include_directories(
 )
 
 
-link_directories(libmicroros)
+link_directories(lib/libmicroros)
 add_executable(deepdrive_micro
     src/main.cpp
     # src/led_ring_main.c
@@ -82,7 +82,7 @@ target_link_libraries(deepdrive_micro
 endif()
 
 target_include_directories(deepdrive_micro PUBLIC
-    libmicroros/include
+    lib/libmicroros/include
 )
 
 SET(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections")

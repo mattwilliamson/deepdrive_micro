@@ -32,5 +32,5 @@
 *.app
 
 build
-pico-sdk
+lib/pico-sdk
 .DS_Store

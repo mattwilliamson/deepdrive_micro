@@ -6,16 +6,16 @@
     ],
     "C_Cpp.default.mergeConfigurations": true,
     "cmake.buildEnvironment": {
-        "PICO_SDK_PATH": "${workspaceFolder}/pico-sdk"
+        "PICO_SDK_PATH": "${workspaceFolder}/lib/pico-sdk"
     },
     "cmake.environment": {
-        "PICO_SDK_PATH": "${workspaceFolder}/pico-sdk",
+        "PICO_SDK_PATH": "${workspaceFolder}/lib/pico-sdk",
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "cmake.buildBeforeRun": true,
     "cortex-debug.openocdPath": "/usr/local/bin/openocd",
     "cmake.configureEnvironment": {
-        "PICO_SDK_PATH": "${workspaceFolder}/pico-sdk"
+        "PICO_SDK_PATH": "${workspaceFolder}/lib/pico-sdk"
     },
     "cmake.configureArgs": [
         "-DRMW_UXRCE_MAX_NODES=1",
