@@ -15,6 +15,10 @@ void led_status_init() {
 }
 
 void led_status_set(bool status) {
+#ifndef STATUS_LED_ENABLED
+  return;
+#endif
+
 #if LIB_PICO_CYW43_ARCH
   cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, status);
 #else

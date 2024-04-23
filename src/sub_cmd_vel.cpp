@@ -11,8 +11,7 @@ void Node::subscription_cmd_vel_callback(const geometry_msgs__msg__Twist *m) {
   status.set(Status::Active);
 
   // TODO: Handle cmd_vel timeout
-  // const auto age_of_last_command = time - last_command_msg->header.stamp;
-  // // Brake if cmd_vel has timeout, override the stored command
+  // const auto age_of_last_command = time - m->header.stamp;
   // if (age_of_last_command > cmd_vel_timeout_)
   // {
   //   last_command_msg->twist.linear.x = 0.0;
@@ -20,14 +19,19 @@ void Node::subscription_cmd_vel_callback(const geometry_msgs__msg__Twist *m) {
   // }
 
   // TODO: handle limits & acceleration
-  const double r = (double)Motor::WHEEL_DIAMETER / 2.0 / Motor::MICRO_METERS;
-  const double wheel_separation = (double)Motor::WHEEL_BASE / Motor::MICRO_METERS;
-  double x = m->linear.x;
-  double theta = m->angular.z;
 
-  // Commanded llinear velocity for each motor side in m/s
-  double left = (x - theta * wheel_separation / 2.0) / r;
-  double right = (x + theta * wheel_separation / 2.0) / r;
+  // Calculate the target speed for each motor
+
+  const double wheel_separation = (double)Motor::WHEEL_BASE / MICRO_METERS;
+  // const double radius = (double)Motor::WHEEL_RADIUS / MICRO_METERS;
+  double x = m->linear.x;
+  double z = m->angular.z;
+
+  // Commanded linear velocity for each motor side in m/s
+  // double left = (x - (cos(z) * wheel_separation / 2.0));
+  // double right = (x + (sin(z) * wheel_separation / 2.0));
+  double left = x + (wheel_separation * z);
+  double right = x - (wheel_separation * z);
 
   // Set the target speed for each motor
   motors[IDX_MOTOR_FRONT_LEFT]->setTargetSpeedMeters(left);

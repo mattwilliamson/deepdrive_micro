@@ -1,6 +1,10 @@
+#include <algorithm>
+
 #include "node.hpp"
 
 int Node::init_odom() {
+  mutex_init(&odom_lock);
+
   RCCHECK(rclc_publisher_init_default(
       &publisher_odom, &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
@@ -40,54 +44,58 @@ int Node::init_odom() {
   return 0;
 }
 
+double Node::ceil_radians(double rad) {
+  if (rad > M_PI) {
+    return rad - 2 * M_PI;
+  } else if (rad < -M_PI) {
+    return rad + 2 * M_PI;
+  } else {
+    return rad;
+  }
+}
 
 void Node::calculate_odom() {
+  mutex_enter_blocking(&odom_lock);
+  // TODO: Flag that the data has been processed
+
   // Do this on core1 to free up cycle time on core0
-  // TODO: mutex here
 
-  // Time elapsed in seconds since the last loop
-  const double step_time = 1.0 / CONTROL_LOOP_HZ;
+  // Meters traveled per side since last loop
+  Micrometers left = (motors[IDX_MOTOR_FRONT_LEFT]->getMicrometersLoop() +
+                      motors[IDX_MOTOR_BACK_LEFT]->getMicrometersLoop()) / 2.0;
 
-  // x, y, theta
-  static double pose[3] = {0.0, 0.0, 0.0};
+  Micrometers right = (motors[IDX_MOTOR_FRONT_RIGHT]->getMicrometersLoop() +
+                       motors[IDX_MOTOR_BACK_RIGHT]->getMicrometersLoop()) / 2.0;
 
-  // Get the meters/s and average it out for each side since the last loop
-  Meters meters[2] = {0, 0};
+  // Calculate the average linear distance to figure where the center of mass has moved
+  Micrometers delta_x = (right + left) / 2;
 
-  meters[MOTOR_LEFT] = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedMeters() +
-                       motors[IDX_MOTOR_BACK_LEFT]->getSpeedMeters() /
-                           MOTOR_COUNT / 2.0;
+  // Calculate the number of radians the robot has turned since the last loop
+  Radians delta_theta = asin((double)(right - left) / Motor::WHEEL_BASE);
 
-  meters[MOTOR_RIGHT] = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedMeters() +
-                        motors[IDX_MOTOR_BACK_RIGHT]->getSpeedMeters() /
-                            MOTOR_COUNT / 2.0;
+  // Get the average angle from the last loop compared to the new angle
+  Radians avg_angle = odom_yaw + (delta_theta / 2);
 
-  // Get the radians/s and average it out for each side since the last loop
-  Radians radians[2] = {0, 0};
+  // Calculate the new pose (x, y, and theta)
+  Micrometers translation_x = ((double)cos(avg_angle) * delta_x);
+  Micrometers translation_y = ((double)sin(avg_angle) * delta_x);
 
-  radians[MOTOR_LEFT] = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedRadians() +
-                        motors[IDX_MOTOR_BACK_LEFT]->getSpeedRadians() /
-                            MOTOR_COUNT / 2.0;
+  // Keep internal state pure micrometers and do conversion as needed
+  odom_x += translation_x;
+  odom_y += translation_y;
 
-  radians[MOTOR_RIGHT] = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedRadians() +
-                         motors[IDX_MOTOR_BACK_RIGHT]->getSpeedRadians() /
-                             MOTOR_COUNT / 2.0;
+  // TODO: Accessors for these
+  msg_out_odom->pose.pose.position.x = (double)odom_x / MICRO_METERS;
+  msg_out_odom->pose.pose.position.y = (double)odom_y / MICRO_METERS;
 
-  const double r = Motor::WHEEL_DIAMETER / 2.0;
-  double delta_s = r * (radians[1] + radians[0]) / 2.0 / Motor::MICRO_METERS;
-  double delta_theta = r * (radians[1] - radians[0]) / ((double)Motor::WHEEL_BASE / Motor::MICRO_METERS);
-
-  // x, y position in meters, theta in radians
-  pose[0] += delta_s * cos(pose[2] + (delta_theta / 2.0));
-  pose[1] += delta_s * sin(pose[2] + (delta_theta / 2.0));
-  pose[2] += delta_theta;
-
-  // Update the pose, x, y
-  msg_out_odom->pose.pose.position.x = pose[0];
-  msg_out_odom->pose.pose.position.y = pose[1];
+  // Stay within bounds of -pi to pi
+  // TODO: Setter for this
+  odom_yaw += delta_theta;
+  odom_yaw = ceil_radians(odom_yaw);
 
   // Update the orientation quaternion and normalize it
-  Quaternion q = Quaternion(0.0, 0.0, delta_theta);
+  // TODO: Function for this
+  Quaternion q = Quaternion(0.0, 0.0, odom_yaw);
   q.normalize();
 
   msg_out_odom->pose.pose.orientation.x = q.x;
@@ -95,17 +103,20 @@ void Node::calculate_odom() {
   msg_out_odom->pose.pose.orientation.z = q.z;
   msg_out_odom->pose.pose.orientation.w = q.w;
 
-  // Update the velocity linear m/s and angular rad/s
-  msg_out_odom->twist.twist.linear.x = delta_s / step_time;
-  msg_out_odom->twist.twist.angular.z = delta_theta / step_time;
+  // Update the velocity linear in m/s and angular rad/s from meters/loop and radians/loop
+  msg_out_odom->twist.twist.linear.x = (double)delta_x * CONTROL_LOOP_HZ / MICRO_METERS;
+  msg_out_odom->twist.twist.angular.z = delta_theta * CONTROL_LOOP_HZ;
 
+  // Set timestamp
   msg_out_odom->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
   msg_out_odom->header.stamp.nanosec = rmw_uros_epoch_nanos();
 
   // Don't publish a transform. robot_localization will fuse our estimates and do that
+  mutex_exit(&odom_lock);
 }
 
 void Node::publish_odom() {
-  // TODO: mutex
+  mutex_enter_blocking(&odom_lock);
   RCSOFTCHECK(rcl_publish(&publisher_odom, msg_out_odom, NULL));
+  mutex_exit(&odom_lock);
 }

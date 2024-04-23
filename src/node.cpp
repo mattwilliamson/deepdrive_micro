@@ -3,10 +3,10 @@
 int Node::init_motors() {
   // Setup 4 ESC brushless motor controllers
   motors.resize(MOTOR_COUNT);
-  motors[IDX_MOTOR_FRONT_LEFT] = new Motor(PIN_MOTOR_FRONT_LEFT, PIN_ENCODER_FRONT_LEFT);
-  motors[IDX_MOTOR_BACK_LEFT] = new Motor(PIN_MOTOR_BACK_LEFT, PIN_ENCODER_BACK_LEFT);
-  motors[IDX_MOTOR_FRONT_RIGHT] = new Motor(PIN_MOTOR_FRONT_RIGHT, PIN_ENCODER_FRONT_RIGHT);
-  motors[IDX_MOTOR_BACK_RIGHT] = new Motor(PIN_MOTOR_BACK_RIGHT, PIN_ENCODER_BACK_RIGHT);
+  motors[IDX_MOTOR_FRONT_LEFT] = new Motor(MOTOR_LEFT, PIN_MOTOR_FRONT_LEFT, PIN_ENCODER_FRONT_LEFT);
+  motors[IDX_MOTOR_BACK_LEFT] = new Motor(MOTOR_LEFT, PIN_MOTOR_BACK_LEFT, PIN_ENCODER_BACK_LEFT);
+  motors[IDX_MOTOR_FRONT_RIGHT] = new Motor(MOTOR_RIGHT, PIN_MOTOR_FRONT_RIGHT, PIN_ENCODER_FRONT_RIGHT);
+  motors[IDX_MOTOR_BACK_RIGHT] = new Motor(MOTOR_RIGHT, PIN_MOTOR_BACK_RIGHT, PIN_ENCODER_BACK_RIGHT);
   return 0;
 }
 
@@ -141,7 +141,7 @@ void Node::spin() {
 void Node::shutdown() {
   // Clean up resources
   // TODO: Cleanup the rest
-  RCCHECK(rcl_publisher_fini(&publisher_motor, &node));
+  // RCCHECK(rcl_publisher_fini(&publisher_motor_speed, &node));
   RCCHECK(rcl_subscription_fini(&subscriber_motor, &node));
   RCCHECK(rcl_node_fini(&node));
 }

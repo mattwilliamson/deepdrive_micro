@@ -59,8 +59,11 @@ double AnalogSensors::getTemperature() {
 
 float AnalogSensors::convertVoltageToPercentage(float voltage) {
   // Assuming a LiPo battery with a voltage range of 3.0V to 4.2V
-  float minVoltage = 3.0 * BATTERY_CELLS;
-  float maxVoltage = 4.2 * BATTERY_CELLS;
+  // float minVoltage = 3.0 * BATTERY_CELLS;
+  // float maxVoltage = 4.2 * BATTERY_CELLS;
+  // Base these numbers off discharge graphs
+  float minVoltage = 3.3 * BATTERY_CELLS;
+  float maxVoltage = 4.0 * BATTERY_CELLS;
 
   // Calculate the percentage based on the voltage range
   float percentage = (voltage - minVoltage) / (maxVoltage - minVoltage) * 100.0;

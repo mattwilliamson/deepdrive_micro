@@ -24,7 +24,7 @@ int Node::init_diagnostic() {
   diagnostic_msgs__msg__DiagnosticStatus__Sequence__init(&msg_out_diagnostic.status, DIAGNOSTIC_COUNT);
 
   msg_out_diagnostic.status.data[0].hardware_id = micro_ros_string_utilities_init("deepdrive_micro");
-  msg_out_diagnostic.status.data[0].name = micro_ros_string_utilities_init("CPU Loop Time (us)");
+  msg_out_diagnostic.status.data[0].name = micro_ros_string_utilities_init("CPU Loop Time (Hz)");
 
   diagnostic_msgs__msg__KeyValue__Sequence__init(&msg_out_diagnostic.status.data[0].values, DIAGNOSTIC_ROWS);
   msg_out_diagnostic.status.data[0].values.data[0].key = micro_ros_string_utilities_init("Core 0");
@@ -41,11 +41,11 @@ void Node::publish_diagnostic() {
   msg_out_diagnostic.header.stamp.nanosec = rmw_uros_epoch_nanos();
 
   // Convert core_elapsed[0] to string
-  std::string core_elapsed_0_str = std::to_string(core_elapsed[0]);
+  std::string core_elapsed_0_str = std::to_string((double)MICROSECONDS / core_elapsed[0]);
   msg_out_diagnostic.status.data[0].values.data[0].value.data = const_cast<char*>(core_elapsed_0_str.c_str());
 
   // Convert core_elapsed[1] to string
-  std::string core_elapsed_1_str = std::to_string(core_elapsed[1]);
+  std::string core_elapsed_1_str = std::to_string((double)MICROSECONDS / core_elapsed[1]);
   msg_out_diagnostic.status.data[0].values.data[1].value.data = const_cast<char*>(core_elapsed_1_str.c_str());
 
   // IMU Status

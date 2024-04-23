@@ -19,6 +19,7 @@ using Meters = double;
 using Pulses = int64_t;
 using DutyCycle = int16_t;
 using Radians = double;
+using Side = uint8_t;
 
 // Keep the intermediate pulse counts until the next read from the map
 
@@ -42,8 +43,6 @@ static volatile uint32_t pulse_count_map[30] = {};
  */
 class Motor {
  public:
-  static const int MICRO_METERS = 1e6;
-  static const int MILLI_METERS = 1e3;
   // 1000 us
   static const DutyCycle DUTY_CYCLE_MIN = 490;
   // 1500 us
@@ -54,6 +53,7 @@ class Motor {
   // diameter of the wheel in micrometers
   static const Micrometers WHEEL_DIAMETER = 89 * MICRO_METERS / MILLI_METERS;
   static const Micrometers WHEEL_RADIUS = WHEEL_DIAMETER / 2.0;
+  // 89 * 3.14159 = 280.5 mm per revolution -> .281 meters/rev
 
   // distance between left and right wheels
   static const Micrometers WHEEL_BASE = 240 * MICRO_METERS / MILLI_METERS;
@@ -86,7 +86,7 @@ class Motor {
    * @param pin The pin number to which the motor is connected.
    * @param encoderPin The pin number to which the motor encoder is connected.
    */
-  Motor(int pin, int encoderPin);
+  Motor(Side side, int pin, int encoderPin);
 
   /**
    * @brief Start the motor.
@@ -107,6 +107,12 @@ class Motor {
    * @brief Disable the motor.
    */
   void disable();
+
+  /**
+   * @brief Get the side of the motor.
+   * @return The side of the motor. MOTOR_LEFT or MOTOR_RIGHT.
+   */
+  Side get_side() { return side_; }
 
   /**
    * @brief Map a value from one range to another.
@@ -143,7 +149,13 @@ class Motor {
 
   // Convert pulses to micrometers
   static Micrometers pulsesToMicrometers(Pulses pulses) {
-    return pulses * UM_PER_REV / PULSES_PER_REV;
+    return (Micrometers)pulses * UM_PER_REV / PULSES_PER_REV;
+  }
+
+  // Convert pulses to meters
+  static Meters pulsesToMeters(Pulses pulses) {
+    Micrometers um = pulsesToMicrometers(pulses);
+    return (Meters)um / MICRO_METERS;
   }
 
   /**
@@ -165,6 +177,25 @@ class Motor {
   Micrometers getSpeedMicrometers() {
     // TODO: Calculate upon update and just read
     return pulsesToMicrometers(speed_);
+  }
+
+  /**
+   * @brief Get the current actual speed of the motor in Micrometers per
+   * loop.
+   * @return The speed of the motor in Micrometers per loop.
+   */
+  Micrometers getMicrometersLoop() {
+    return pulsesToMicrometers(pulses_loop_);
+  }
+
+  /**
+   * @brief Get the current actual speed of the motor in Meters per
+   * loop.
+   * @return The speed of the motor in Meters per loop.
+   */
+  Micrometers getMetersLoop() {
+    Meters um = pulsesToMicrometers(pulses_loop_);
+    return um / MICRO_METERS;
   }
 
   /**
@@ -213,6 +244,12 @@ class Motor {
   Pulses getTargetSpeed();
 
   /**
+   * @brief Get the target speed of the motor.
+   * @return The target speed of the motor in meters/sec.
+   */
+  Meters getTargetSpeedMeters();
+
+  /**
    * @brief Read the number of pulses counted by the motor.
    */
   void readPulses();
@@ -223,7 +260,9 @@ class Motor {
    */
   Pulses getPulses() { return pulses_; }
 
-  Micrometers getTotalMicrometers() { return pulsesToMicrometers(pulses_); }
+  Micrometers getTotalMicrometers() { 
+    return pulsesToMicrometers(pulses_); 
+  }
 
   Meters getTotalMeters() {
     Meters um = pulsesToMicrometers(pulses_);
@@ -264,6 +303,7 @@ class Motor {
   int pin_;              // Pin number of the motor
   int encoderPin_;       // Pin number of the motor encoder
   int16_t speed_;        // current speed pulses/sec
+  int16_t pulses_loop_;  // current speed pulses/loop
   int16_t speedSignal_;  // current speed signal pulses/sec
   int16_t targetSpeed_;  // desired speed of the motor pulses/sec
   int64_t pulses_;       // Number of pulses counted by the motor total
@@ -271,6 +311,7 @@ class Motor {
   uint slice_;           // PWM slice number
   uint channel_;         // PWM channel number
   int8_t direction_;     // Direction of the motor (1, 0, -1)
+  Side side_;            // Which side the motor is on
 };
 
 #endif  // MOTOR_H

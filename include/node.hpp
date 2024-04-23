@@ -83,20 +83,27 @@ class Node {
   rcl_timer_t timer_telemetry_loop;
   rclc_parameter_server_t param_server;
 
-  rcl_publisher_t publisher_motor;
+  rcl_publisher_t publisher_motor_cmd;
+  rcl_publisher_t publisher_motor_speed;
   rcl_publisher_t publisher_battery;
   rcl_publisher_t publisher_join_state;
   rcl_publisher_t publisher_imu;
   rcl_publisher_t publisher_mag;
   rcl_publisher_t publisher_odom;
 
-  control_msgs__msg__MecanumDriveControllerState mgs_out_motor;  // TODO: Find the create function for this
+  control_msgs__msg__MecanumDriveControllerState mgs_out_motor_speed;  // TODO: Find the create function for this
+  control_msgs__msg__MecanumDriveControllerState mgs_out_motor_cmd;  // TODO: Find the create function for this
   sensor_msgs__msg__BatteryState msg_out_battery;                // TODO: Find the create function for this
   sensor_msgs__msg__JointState* msg_out_joint_state;
   sensor_msgs__msg__Imu* msg_out_imu;
   sensor_msgs__msg__MagneticField* msg_out_mag;
 
+  // Odometry
+  Radians odom_yaw = 0;
+  Micrometers odom_x = 0;
+  Micrometers odom_y = 0;
   nav_msgs__msg__Odometry* msg_out_odom;
+  mutex_t odom_lock;
 
   rcl_subscription_t subscriber_motor;
   control_msgs__msg__MecanumDriveControllerState msg_in_motor;
@@ -143,6 +150,8 @@ class Node {
     static Node instance;
     return instance;
   }
+
+  static double ceil_radians(double rad);
 
   Node();
 

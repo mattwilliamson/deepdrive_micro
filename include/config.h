@@ -13,8 +13,13 @@
 
 #define NDEBUG
 
-// #define CONTROL_LOOP_HZ 1.0
-#define CONTROL_LOOP_HZ 50
+static const int MICRO_METERS = 1e6;
+static const int MILLI_METERS = 1e3;
+
+// #define STATUS_LED_ENABLED 1
+
+// #define CONTROL_LOOP_HZ 4.0
+#define CONTROL_LOOP_HZ 30
 #define MAIN_LOOP_HZ 20
 #define TELEMETRY_LOOP_HZ 2
 
@@ -113,14 +118,28 @@
 // START PID CONTROLLER
 // ----------------------------------
 
+// // Proportional
+// #define PID_KP 0.95  // 1.9 starts to oscillate at .1m/s
+
+// // Integral
+// #define PID_KI 0.1  // 0.25 starts to oscillate
+
+// // Derivative
+// #define PID_KD 0.2
+
 // Proportional
-#define PID_KP 0.95  // 1.9 starts to oscillate at .1m/s
+#define PID_KP (0.025 * CONTROL_LOOP_HZ)
+// #define PID_KP 0.019 * CONTROL_LOOP_HZ
 
 // Integral
-#define PID_KI 0.1  // 0.25 starts to oscillate
+#define PID_KI (0.0015 * CONTROL_LOOP_HZ)
+// #define PID_KI (0.002 * CONTROL_LOOP_HZ)
 
 // Derivative
-#define PID_KD 0.2
+#define PID_KD (0.01 * CONTROL_LOOP_HZ)
+// #define PID_KD (0.000 * CONTROL_LOOP_HZ)
+
+
 
 // END PID CONTROLLER
 // ----------------------------------

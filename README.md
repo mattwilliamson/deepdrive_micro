@@ -115,6 +115,11 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Break up different cpp files into separate classes
+- mutexes for all calculation and publishing
+- .02m/s speed ssems like minimum. add that dead band
+- take minimum pulses for a side to remove outliers
+- Timeout if no twist received for some period of time and stop motors
 - Publish Odom
 - IMU Retries
 - Set status string for diagnostic

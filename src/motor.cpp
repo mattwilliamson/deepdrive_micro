@@ -5,7 +5,8 @@
 
 void gpio_callback(uint gpio, uint32_t events) { pulse_count_map[gpio]++; }
 
-Motor::Motor(int pin, int encoderPin) {
+Motor::Motor(Side side, int pin, int encoderPin) {
+  side_ = side;
   pin_ = pin;
   encoderPin_ = encoderPin;
   targetSpeed_ = 0;
@@ -21,8 +22,7 @@ Motor::Motor(int pin, int encoderPin) {
                                      PID_KI,          // Ki
                                      PID_KD           // Kd
   );
-
-  enable();
+  start();
 }
 
 void Motor::start() {
@@ -48,12 +48,12 @@ void Motor::start() {
     pulse_count_map[encoderPin_] = 0;
   }
 
-  // Stop the motor initially
+  enable();
   stop();
 }
 
 void Motor::enable() {
-  stop();
+  // Stop the motor initially
   pwm_set_enabled(slice_, true);
 }
 
@@ -67,11 +67,13 @@ void Motor::readPulses() {
   // TODO: Should I keep a couple loops worth and average the pulses?
 
   // Bitshift left to avoid getting incremented by the ISR while we are trying to get out the value
-  pulse_count_map[encoderPin_] << 16;
-  uint32_t newPulses = pulse_count_map[encoderPin_] & 0xFFFF0000;
+  pulse_count_map[encoderPin_] <<= 16;
+  uint32_t newPulses = pulse_count_map[encoderPin_];
+  newPulses &= 0xFFFF0000;
+  newPulses >>= 16;
+
   // clear out the left 16 bits to reset
   pulse_count_map[encoderPin_] &= 0x0000FFFF;
-  
 
   // ------------------------------------------------
   // This version is a known working reference
@@ -81,11 +83,16 @@ void Motor::readPulses() {
   // pulse_count_map[encoderPin_] = 0;
   // ------------------------------------------------
 
-  // Calculate speed for a whole second
-  speed_ = newPulses * CONTROL_LOOP_HZ * direction_;
+  // Remember the number of pulses since the last loop
+  // average the last two samples to smooth it out for the PID controller
+  pulses_loop_ = (pulses_loop_ + (newPulses * direction_)) / 2;
 
-  if (newPulses > 0 && speed_ != 0) {
-    pulses_ += direction_ * newPulses;
+  // Calculate speed for a whole second
+  speed_ = pulses_loop_ * CONTROL_LOOP_HZ;
+
+  // Update total pulses
+  if (newPulses > 0 && direction_ != 0) {
+    pulses_ += newPulses * direction_;
   }
 }
 
@@ -121,7 +128,13 @@ void Motor::setTargetSpeed(Pulses targetSpeed) {
   pidController_->setSetpoint(targetSpeed_);
 }
 
-Pulses Motor::getTargetSpeed() { return targetSpeed_; }
+Pulses Motor::getTargetSpeed() { 
+  return targetSpeed_;
+}
+
+Meters Motor::getTargetSpeedMeters() { 
+  return pulsesToMeters(targetSpeed_); 
+}
 
 void Motor::stop() { setSpeedSignal(0); }
 
