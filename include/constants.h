@@ -1,0 +1,7 @@
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
+#define MICROSECONDS 1e6
+#define MILLISECONDS 1e3
+
+#endif // CONSTANTS_H

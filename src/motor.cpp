@@ -53,8 +53,10 @@ void Motor::start() {
 }
 
 void Motor::enable() {
-  // Stop the motor initially
+// Stop the motor initially
+#ifndef ODOM_SIMULATE
   pwm_set_enabled(slice_, true);
+#endif
 }
 
 void Motor::disable() {
@@ -62,10 +64,7 @@ void Motor::disable() {
   pwm_set_enabled(slice_, false);
 }
 
-
 void Motor::readPulses() {
-  // TODO: Should I keep a couple loops worth and average the pulses?
-
   // Bitshift left to avoid getting incremented by the ISR while we are trying to get out the value
   pulse_count_map[encoderPin_] <<= 16;
   uint32_t newPulses = pulse_count_map[encoderPin_];
@@ -75,25 +74,28 @@ void Motor::readPulses() {
   // clear out the left 16 bits to reset
   pulse_count_map[encoderPin_] &= 0x0000FFFF;
 
-  // ------------------------------------------------
-  // This version is a known working reference
-  // int newPulses = pulse_count_map[encoderPin_];
-
-  // Reset counter
-  // pulse_count_map[encoderPin_] = 0;
-  // ------------------------------------------------
-
-  // Calculate speed for a whole second
-  speed_ = pulses_loop_ * CONTROL_LOOP_HZ;
+  #ifdef ODOM_SIMULATE
+    static int16_t lastSpeedSignal = 0;
+    // Simulate the pulses with a little noise
+    int noise = rand() % 2;
+    // How much weight to put on the previous value
+    static const int16_t prevWeight = 5;
+    int16_t weightedPulses = ((prevWeight * lastSpeedSignal) + speedSignal_) / (prevWeight + 1);
+    newPulses = (weightedPulses / CONTROL_LOOP_HZ) + noise;
+    lastSpeedSignal = speedSignal_;
+  #endif
 
   // Update total pulses
   if (newPulses > 0 && direction_ != 0) {
     pulses_ += newPulses * direction_;
-
-    // Remember the number of pulses since the last loop
-    // average the last two samples to smooth it out for the PID controller
-    pulses_loop_ = (pulses_loop_ + (newPulses * direction_)) / 2;
   }
+
+  // Remember the number of pulses since the last loop
+  // average the last two samples to smooth it out for the PID controller
+  pulses_loop_ = (pulses_loop_ + (newPulses * direction_)) / 2;
+
+  // Calculate speed for a whole second
+  speed_ = pulses_loop_ * CONTROL_LOOP_HZ;
 }
 
 int16_t Motor::calculatePid() {
@@ -128,12 +130,12 @@ void Motor::setTargetSpeed(Pulses targetSpeed) {
   pidController_->setSetpoint(targetSpeed_);
 }
 
-Pulses Motor::getTargetSpeed() { 
+Pulses Motor::getTargetSpeed() {
   return targetSpeed_;
 }
 
-Meters Motor::getTargetSpeedMeters() { 
-  return pulsesToMeters(targetSpeed_); 
+Meters Motor::getTargetSpeedMeters() {
+  return pulsesToMeters(targetSpeed_);
 }
 
 void Motor::stop() { setSpeedSignal(0); }

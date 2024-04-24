@@ -15,8 +15,7 @@ void Node::publish_motor() {
   // Publish motor state
   // 121us to calculate these
   // TODO: Do calculation in control loop and publish here
-  mgs_out_motor_speed.header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
-  mgs_out_motor_speed.header.stamp.nanosec = rmw_uros_epoch_nanos();
+  PubSub::set_timestamp_header(&mgs_out_motor_speed.header);
   mgs_out_motor_speed.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getSpeedMeters();
   mgs_out_motor_speed.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getSpeedMeters();
   mgs_out_motor_speed.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getSpeedMeters();
@@ -28,8 +27,7 @@ void Node::publish_motor() {
   // Publish motor state for setpoint speed
   // 121us to calculate these
   // TODO: Do calculation in control loop and publish here
-  mgs_out_motor_cmd.header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
-  mgs_out_motor_cmd.header.stamp.nanosec = rmw_uros_epoch_nanos();
+  PubSub::set_timestamp_header(&mgs_out_motor_cmd.header);
   mgs_out_motor_cmd.front_left_wheel_velocity = motors[IDX_MOTOR_FRONT_LEFT]->getTargetSpeedMeters();
   mgs_out_motor_cmd.front_right_wheel_velocity = motors[IDX_MOTOR_FRONT_RIGHT]->getTargetSpeedMeters();
   mgs_out_motor_cmd.back_left_wheel_velocity = motors[IDX_MOTOR_BACK_LEFT]->getTargetSpeedMeters();

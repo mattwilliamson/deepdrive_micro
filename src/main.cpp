@@ -80,56 +80,8 @@ int main() {
   error_code = rmw_uros_ping_agent(timeout_ms, attempts);
   RCCHECK(error_code);
 
-  //     error_code = rclc_support_init(&support, 0, NULL, &allocator);
-  //     // RCCHECK(error_code);
-  //     // error code is 1
-
-  //     error_code = rclc_node_init_default(&node, "pico_node", "", &support);
-  //     // RCCHECK(error_code);
-  //     // error code is 1
-
-  //     rclc_publisher_init_default(
-  //         &publisher,
-  //         &node,
-  //         ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-  //         "pico_publisher");
-
-  //     rclc_timer_init_default(
-  //         &timer,
-  //         &support,
-  //         RCL_MS_TO_NS(1000),
-  //         timer_callback);
-
-  //     rclc_executor_init(&executor, &support.context, 1, &allocator);
-  //     rclc_executor_add_timer(&executor, &timer);
-
-  // gpio_put(LED_PIN, 1);
-
-  //     msg.data = 0;
-  //     while (true)
-  //     {
-  //         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
-  //     }
-  //     // return 0;
-
-  // create init_options
-  // rcl_ret_t error_code = rclc_support_init(&support, 0, NULL, &allocator);
-  // RCCHECK(error_code);
-
   Node& main_node = Node::getInstance();
   main_node.spin();
-
-  // TODO: Define topics in config
-
-  // while (true) {
-  //   #ifdef WATCHDOG_ENABLED
-  //   watchdog_update();
-  //   #endif
-
-  //   RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1)));
-  //   // rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
-  //   // RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
-  // }
 
   // node.shutdown();
 

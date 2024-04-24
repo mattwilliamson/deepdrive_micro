@@ -27,13 +27,14 @@
 
 extern "C" {
 #include "hardware/i2c.h"
-#include "pico/stdlib.h"
 #include "pico-icm20948.h"
-#include "MadgwickAHRS.h"
+#include "pico/stdlib.h"
+// #include "MadgwickAHRS.h"
+#include "Fusion.h"
 }
 
-#include <cmath>
 #include <array>
+#include <cmath>
 
 // typedef struct icm20984_data {
 //     // 0: x, 1: y, 2: z
@@ -46,13 +47,11 @@ extern "C" {
 //     float temp_c;
 // } icm20984_data_t;
 
-
 struct Vector3 {
   double x;
   double y;
   double z;
 };
-
 
 enum ImuErrorCode {
   OK = 0,
@@ -122,7 +121,6 @@ class IMU {
    */
   ImuErrorCode read();
 
-
   /**
    * @brief Retrieves the acceleration measurements from the IMU sensor.
    *
@@ -160,7 +158,7 @@ class IMU {
    *
    * @return A string describing the current status of the sensor.
    */
-  const char * statusString() {
+  const char* statusString() {
     // return imu_.statusString();
     return "";
   }
@@ -169,10 +167,10 @@ class IMU {
   // ICM_20948_I2C imu_;
 
   icm20948_config_t config_;
-  madgwick_ahrs_t filter_;
-  icm20984_data_t data_;      // Data structure to store sensor readings.
+  // madgwick_ahrs_t filter_;
+  icm20984_data_t data_;  // Data structure to store sensor readings.
 
-  i2c_inst_t i2c_;  // The I2C instance used for communication with the IMU sensor.
+  i2c_inst_t i2c_;      // The I2C instance used for communication with the IMU sensor.
   uint8_t address_;     // The I2C address of the IMU sensor.
   uint8_t addressMag_;  // The I2C address of the magnetometer within the IMU
                         // sensor.
@@ -187,8 +185,25 @@ class IMU {
   double mag_ut_[3];    // Magnetometer readings in microteslas.
   double temp_c_;       // Temperature reading in degrees Celsius.
 
-  bool has_new_data_;  // Flag indicating whether new sensor data is available.
+  bool has_new_data_;       // Flag indicating whether new sensor data is available.
   Quaternion orientation_;  // Estimated orientation of the sensor.
+
+  const FusionMatrix gyroscopeMisalignment = {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+  const FusionVector gyroscopeSensitivity = {1.0f, 1.0f, 1.0f};
+  const FusionVector gyroscopeOffset = {0.0f, 0.0f, 0.0f};
+  const FusionMatrix accelerometerMisalignment = {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+  const FusionVector accelerometerSensitivity = {1.0f, 1.0f, 1.0f};
+  const FusionVector accelerometerOffset = {0.0f, 0.0f, 0.0f};
+  const FusionMatrix softIronMatrix = {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+  const FusionVector hardIronOffset = {0.0f, 0.0f, 0.0f};
+
+  // Initialise algorithms
+  FusionOffset offset;
+  FusionAhrs ahrs;
+
+  FusionVector gyroscope = {0.0f, 0.0f, 0.0f};      // replace this with actual gyroscope data in degrees/s
+  FusionVector accelerometer = {0.0f, 0.0f, 1.0f};  // replace this with actual accelerometer data in g
+  FusionVector magnetometer = {1.0f, 0.0f, 0.0f};   // replace this with actual magnetometer data in arbitrary units
 };
 
 #endif  // IMU_HPP

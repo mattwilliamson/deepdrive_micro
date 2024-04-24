@@ -6,7 +6,7 @@ static void timer_cb_telemetry_loop(rcl_timer_t *timer, int64_t last_call_time) 
 
 int Node::init_telemetry_loop() {
       return rclc_timer_init_default(&timer_telemetry_loop, &support,
-                                  RCL_MS_TO_NS(1.0 / TELEMETRY_LOOP_HZ * 1000),
+                                  RCL_MS_TO_NS(1000 / TELEMETRY_LOOP_HZ),
                                   timer_cb_telemetry_loop);
 }
 

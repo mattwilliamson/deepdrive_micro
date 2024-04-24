@@ -115,6 +115,11 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Use just veloicty for odom
+- Odom simulator
+- Watchdog for restarts
+- Transform IMU frame
+- IMU SPI?
 - Average IMU Readings
 - Take another stab at IMU DMP
 - Timeout if no twist received for some period of time and stop motors

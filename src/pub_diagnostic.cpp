@@ -37,8 +37,7 @@ int Node::init_diagnostic() {
 }
 
 void Node::publish_diagnostic() {
-  msg_out_diagnostic.header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
-  msg_out_diagnostic.header.stamp.nanosec = rmw_uros_epoch_nanos();
+  PubSub::set_timestamp_header(&msg_out_diagnostic.header);
 
   // Convert core_elapsed[0] to string
   std::string core_elapsed_0_str = std::to_string((double)MICROSECONDS / core_elapsed[0]);

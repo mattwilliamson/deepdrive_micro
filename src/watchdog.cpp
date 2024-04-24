@@ -5,7 +5,7 @@ void Node::init_watchdog() {
   // We rebooted because we got stuck or something
   if (watchdog_caused_reboot()) {
     // printf("Rebooted by Watchdog!\r\n");
-    status.set(STATUS_REBOOTED);
+    status.set(Status::Rebooted);
     sleep_ms(10000);
   }
 
@@ -15,3 +15,9 @@ void Node::init_watchdog() {
   watchdog_enable(1000, false);
 #endif
 }
+
+// void Node::watchdog_update() {
+// #ifdef WATCHDOG_ENABLED
+//   watchdog_update();
+// #endif
+// }

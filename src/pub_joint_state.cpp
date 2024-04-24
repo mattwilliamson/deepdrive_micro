@@ -43,8 +43,7 @@ void Node::calculate_joint_state() {
    *  * the velocity of the joint (rad/s or m/s) and
    *  * the effort that is applied in the joint (Nm or N).
    */
-  msg_out_joint_state->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
-  msg_out_joint_state->header.stamp.nanosec = rmw_uros_epoch_nanos();
+  PubSub::set_timestamp_header(&msg_out_joint_state->header);
 
   for (int i = 0; i < MOTOR_COUNT; i++) {
     msg_out_joint_state->position.data[i] = motors[i]->getPosition();

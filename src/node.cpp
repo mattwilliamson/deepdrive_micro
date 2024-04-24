@@ -2,7 +2,6 @@
 
 int Node::init_motors() {
   // Setup 4 ESC brushless motor controllers
-  motors.resize(MOTOR_COUNT);
   motors[IDX_MOTOR_FRONT_LEFT] = new Motor(MOTOR_LEFT, PIN_MOTOR_FRONT_LEFT, PIN_ENCODER_FRONT_LEFT);
   motors[IDX_MOTOR_BACK_LEFT] = new Motor(MOTOR_LEFT, PIN_MOTOR_BACK_LEFT, PIN_ENCODER_BACK_LEFT);
   motors[IDX_MOTOR_FRONT_RIGHT] = new Motor(MOTOR_RIGHT, PIN_MOTOR_FRONT_RIGHT, PIN_ENCODER_FRONT_RIGHT);
@@ -25,6 +24,8 @@ void Node::enable_motors() {
 Node::Node() {
   rcl_ret_t error_code;
   status.set(Status::Connecting);
+
+  motors.resize(MOTOR_COUNT);
 
   // TODO: Status booting, update after ping to connecting
 
@@ -85,9 +86,7 @@ Node::Node() {
   init_motor_pub();
 
   // Odom publisher
-  status.setErrorString("Init odom");
-  publish_diagnostic();
-  init_odom();
+  publisher_odom = new PubOdom(&node, &support, &allocator, motors);
 
   // Joint State publisher
   status.setErrorString("Init joint state");

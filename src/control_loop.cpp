@@ -38,7 +38,7 @@ int Node::start_control_loop() {
   }
 
     // Setup IMU timer
-  if (!add_repeating_timer_us(-MICROSECONDS / TIMER_LOOP_HZ, trigger_imu, NULL, &timer_imu)) {
+  if (!add_repeating_timer_us(-MICROSECONDS / IMU_LOOP_HZ, trigger_imu, NULL, &timer_imu)) {
     // printf("Failed to add IMU loop timer\r\n");
     return 1;
   }
@@ -69,7 +69,7 @@ void Node::spin_control_loop() {
       // possible e.g. calculate odometry, publish sensor data, etc.
 
       calculate_joint_state();
-      calculate_odom();
+      publisher_odom->calculate();
 
       core_elapsed[1] = time_us_64() - core_start[1];
     }
@@ -89,12 +89,14 @@ void Node::spin_control_loop() {
 
 #ifdef IMU_ENABLED
   if (imu_due) {
+    mutex_enter_blocking(&imu_lock);
     int8_t success = imu.read();
     // if (success != ImuErrorCode::OK) {
     //   printf("Error reading IMU data\r\n");
     //   return;
     // }
     imu_due = false;
+    mutex_exit(&imu_lock);
   }
 #endif
 

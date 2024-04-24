@@ -44,6 +44,7 @@ extern "C" {
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include "pico_uart_transports.h"
+#include "constants.h"
 }
 
 #include "analog_sensors.hpp"
@@ -52,9 +53,8 @@ extern "C" {
 #include "motor.hpp"
 #include "quaternion.hpp"
 #include "status.hpp"
-
-#define MICROSECONDS 1e6
-#define MILLISECONDS 1e3
+#include "pubsub.hpp"
+#include "pub_odom.hpp"
 
 /**
  * @class Node
@@ -89,7 +89,8 @@ class Node {
   rcl_publisher_t publisher_join_state;
   rcl_publisher_t publisher_imu;
   rcl_publisher_t publisher_mag;
-  rcl_publisher_t publisher_odom;
+
+  PubOdom *publisher_odom;
 
   control_msgs__msg__MecanumDriveControllerState mgs_out_motor_speed;  // TODO: Find the create function for this
   control_msgs__msg__MecanumDriveControllerState mgs_out_motor_cmd;  // TODO: Find the create function for this
@@ -98,13 +99,6 @@ class Node {
   sensor_msgs__msg__Imu* msg_out_imu;
   sensor_msgs__msg__MagneticField* msg_out_mag;
 
-  // Odometry
-  Radians odom_yaw = 0;
-  Micrometers odom_x = 0;
-  Micrometers odom_y = 0;
-  nav_msgs__msg__Odometry* msg_out_odom;
-  mutex_t odom_lock;
-
   rcl_subscription_t subscriber_motor;
   control_msgs__msg__MecanumDriveControllerState msg_in_motor;
 
@@ -112,6 +106,7 @@ class Node {
   geometry_msgs__msg__Twist msg_in_cmd_vel;
 
   IMU imu;
+  mutex_t imu_lock;
 
   LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
   StatusManager status;
@@ -156,6 +151,10 @@ class Node {
   static double ceil_radians(double rad);
 
   Node();
+
+  std::vector<Motor*> getMotors() {
+    return motors;
+  }
 
   // Run control loop in a separate core
   void spin_control_loop();
@@ -226,11 +225,6 @@ class Node {
   // Diagnostic publisher
   int init_diagnostic();
   void publish_diagnostic();
-
-  // Odom publisher
-  int init_odom();
-  void calculate_odom();
-  void publish_odom();
 
   // Battery publisher
   int init_battery();

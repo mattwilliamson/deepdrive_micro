@@ -6,7 +6,7 @@ static void timer_cb_main_loop(rcl_timer_t *timer, int64_t last_call_time) {
 
 int Node::init_main_loop() {
   return rclc_timer_init_default(&timer_main_loop, &support,
-                                  RCL_MS_TO_NS(1.0 / MAIN_LOOP_HZ * 1000),
+                                  RCL_MS_TO_NS(1000 / MAIN_LOOP_HZ),
                                   timer_cb_main_loop);
   // return rclc_timer_init_default(&timer_main_loop, &support,
   //                                 RCL_MS_TO_NS(1000),
@@ -50,7 +50,7 @@ void Node::spin_main_loop(rcl_timer_t *timer, int64_t last_call_time) {
   // 630us to publish_imu
   publish_imu();
 
-  publish_odom();
+  publisher_odom->publish();
 
   core_elapsed[0] = time_us_64() - core_start[0];
 }

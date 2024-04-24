@@ -2,6 +2,8 @@
 
 int Node::init_imu() {
 #ifdef IMU_ENABLED
+  mutex_init(&imu_lock);
+
   RCCHECK(rclc_publisher_init_default(
       &publisher_imu, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
       "~/imu"));
@@ -46,40 +48,41 @@ int Node::init_imu() {
 
 void Node::publish_imu() {
 #ifdef IMU_ENABLED
-
-  msg_out_imu->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
-  msg_out_imu->header.stamp.nanosec = rmw_uros_epoch_nanos();
+  mutex_enter_blocking(&imu_lock);
 
   Vector3 accel = imu.getAccel();
 
-  msg_out_imu->linear_acceleration.x = accel.x;
-  msg_out_imu->linear_acceleration.y = accel.y;
-  msg_out_imu->linear_acceleration.z = accel.z;
+  // NED -> ENU conversion
+  msg_out_imu->linear_acceleration.x = accel.y;
+  msg_out_imu->linear_acceleration.y = accel.x;
+  msg_out_imu->linear_acceleration.z = -accel.z;
 
-  msg_out_imu->linear_acceleration_covariance[0] = 0.001;
-  msg_out_imu->linear_acceleration_covariance[4] = 0.001;
-  msg_out_imu->linear_acceleration_covariance[8] = 0.001;
+  msg_out_imu->linear_acceleration_covariance[0] = 0.1;
+  msg_out_imu->linear_acceleration_covariance[4] = 0.1;
+  msg_out_imu->linear_acceleration_covariance[8] = 0.1;
 
   Vector3 gyro = imu.getGyro();
 
-  msg_out_imu->angular_velocity.x = gyro.x;
-  msg_out_imu->angular_velocity.y = gyro.y;
-  msg_out_imu->angular_velocity.z = gyro.z;
+  // NED -> ENU conversion
+  msg_out_imu->angular_velocity.x = gyro.y;
+  msg_out_imu->angular_velocity.y = gyro.x;
+  msg_out_imu->angular_velocity.z = -gyro.z;
 
-  msg_out_imu->angular_velocity_covariance[0] = 0.001;
-  msg_out_imu->angular_velocity_covariance[4] = 0.001;
-  msg_out_imu->angular_velocity_covariance[8] = 0.001;
+  msg_out_imu->angular_velocity_covariance[0] = 0.1;
+  msg_out_imu->angular_velocity_covariance[4] = 0.1;
+  msg_out_imu->angular_velocity_covariance[8] = 0.1;
 
   Quaternion orientation = imu.getOrientation();
 
-  msg_out_imu->orientation.x = orientation.x;
-  msg_out_imu->orientation.y = orientation.y;
-  msg_out_imu->orientation.z = orientation.z;
+// NED -> ENU conversion
+  msg_out_imu->orientation.x = orientation.y;
+  msg_out_imu->orientation.y = orientation.x;
+  msg_out_imu->orientation.z = -orientation.z;
   msg_out_imu->orientation.w = orientation.w;
 
-  msg_out_imu->orientation_covariance[0] = 0.001;
-  msg_out_imu->orientation_covariance[4] = 0.001;
-  msg_out_imu->orientation_covariance[8] = 0.001;
+  msg_out_imu->orientation_covariance[0] = 0.1;
+  msg_out_imu->orientation_covariance[4] = 0.1;
+  msg_out_imu->orientation_covariance[8] = 0.1;
 
   // For testing
   // auto euler = IMU::quaternianToEuler(orientation);
@@ -87,10 +90,15 @@ void Node::publish_imu() {
   // msg_out_imu->linear_acceleration.y = euler[1];
   // msg_out_imu->linear_acceleration.z = euler[2];
 
-  // msg_out_imu->linear_acceleration_covariance[0] = 0.001;
-  // msg_out_imu->linear_acceleration_covariance[4] = 0.001;
-  // msg_out_imu->linear_acceleration_covariance[8] = 0.001;
+  // msg_out_imu->linear_acceleration_covariance[0] = 0.1;
+  // msg_out_imu->linear_acceleration_covariance[4] = 0.1;
+  // msg_out_imu->linear_acceleration_covariance[8] = 0.1;
+  
 
+  mutex_exit(&imu_lock);
+
+  PubSub::set_timestamp_header(&msg_out_imu->header);
+  
   // RCSOFTCHECK(rcl_publish(&publisher_imu, msg_out_imu, NULL));
   rcl_ret_t pub_ok = rcl_publish(&publisher_imu, msg_out_imu, NULL);
 
@@ -105,12 +113,11 @@ void Node::publish_imu() {
   // msg_out_mag->magnetic_field.y = mag.y;
   // msg_out_mag->magnetic_field.z = mag.z;
 
-  // msg_out_mag->magnetic_field_covariance[0] = 0.001;
-  // msg_out_mag->magnetic_field_covariance[4] = 0.001;
-  // msg_out_mag->magnetic_field_covariance[8] = 0.001;
+  // msg_out_mag->magnetic_field_covariance[0] = 0.1;
+  // msg_out_mag->magnetic_field_covariance[4] = 0.1;
+  // msg_out_mag->magnetic_field_covariance[8] = 0.1;
 
-  // msg_out_mag->header.stamp.sec = rmw_uros_epoch_millis() / MILLISECONDS;
-  // msg_out_mag->header.stamp.nanosec = rmw_uros_epoch_nanos();
+  // set_timestamp_header(&msg_out_mag->header);
 
   // RCSOFTCHECK(rcl_publish(&publisher_mag, &msg_out_mag, NULL));
 #endif

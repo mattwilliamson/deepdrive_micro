@@ -2,7 +2,6 @@
 
 #include "node.hpp"
 
-
 IMU::IMU(i2c_inst_t i2c, uint8_t address, uint8_t addressMag, int sda, int scl, int speed) {
   i2c_ = i2c;
   address_ = address;
@@ -29,12 +28,26 @@ IMU::IMU(i2c_inst_t i2c, uint8_t address, uint8_t addressMag, int sda, int scl, 
   // // TODO: Might use this flag to read in background task somehow
   has_new_data_ = false;
 
-  filter_ = {0.5f, {1.0f, 0.0f, 0.0f, 0.0f}};
+  // filter_ = {0.5f, {1.0f, 0.0f, 0.0f, 0.0f}};
 
   // TODO: Store mag bias in flash or eeprom
-  data_.mag_bias[0] = 102;
-  data_.mag_bias[1] = -77;
-  data_.mag_bias[2] = -227;
+  // data_.mag_bias[0] = 102;
+  // data_.mag_bias[1] = -77;
+  // data_.mag_bias[2] = -227;
+
+  FusionOffsetInitialise(&offset, IMU_LOOP_HZ);
+  FusionAhrsInitialise(&ahrs);
+
+  // Set AHRS algorithm settings
+  const FusionAhrsSettings settings = {
+      .convention = FusionConventionNwu,
+      .gain = 0.5f,
+      .gyroscopeRange = 2000.0f, /* replace this with actual gyroscope range in degrees/s */
+      .accelerationRejection = 10.0f,
+      .magneticRejection = 10.0f,
+      .recoveryTriggerPeriod = 5 * IMU_LOOP_HZ, /* 5 seconds */
+  };
+  FusionAhrsSetSettings(&ahrs, &settings);
 
   error = ImuErrorCode::INIT;
 }
@@ -292,29 +305,96 @@ ImuErrorCode IMU::read() {
   icm20948_read_cal_mag(&config_, &data_.mag_raw[0], &data_.mag_bias[0]);
   icm20948_read_temp_c(&config_, &data_.temp_c);
 
-  accel_g_[0] = (float)data_.accel_raw[0] / 16384.0f * GRAVITY;
-  accel_g_[1] = (float)data_.accel_raw[1] / 16384.0f * GRAVITY;
-  accel_g_[2] = (float)data_.accel_raw[2] / 16384.0f * GRAVITY;
-  gyro_dps_[0] = (float)data_.gyro_raw[0] / 131.0f;
-  gyro_dps_[1] = (float)data_.gyro_raw[1] / 131.0f;
-  gyro_dps_[2] = (float)data_.gyro_raw[2] / 131.0f;
-  mag_ut_[0] = (float)data_.mag_raw[1];
-  mag_ut_[1] = (float)-data_.mag_raw[0];
-  mag_ut_[2] = (float)-data_.mag_raw[2];
+  accel_g_[0] = ((double)data_.accel_raw[0] / 16384.0) * GRAVITY;
+  accel_g_[1] = ((double)data_.accel_raw[1] / 16384.0) * GRAVITY;
+  accel_g_[2] = ((double)data_.accel_raw[2] / 16384.0) * GRAVITY;
+  gyro_dps_[0] = (double)data_.gyro_raw[0] / 131.0;
+  gyro_dps_[1] = (double)data_.gyro_raw[1] / 131.0;
+  gyro_dps_[2] = (double)data_.gyro_raw[2] / 131.0;
+  mag_ut_[0] = (double)data_.mag_raw[1];
+  // mag_ut_[1] = (double)-data_.mag_raw[0];
+  // mag_ut_[2] = (double)-data_.mag_raw[2];
+  mag_ut_[1] = (double)data_.mag_raw[0];
+  mag_ut_[2] = (double)data_.mag_raw[2];
 
-  // Invert Z axis to match robot_localization
-  accel_g_[2] *= -1;
-  gyro_dps_[2] *= -1;
-  mag_ut_[2] *= -1;
-
-
-  // Get Orientation by filtering raw data
-  MadgwickAHRSupdate(&filter_, gyro_dps_[0], gyro_dps_[1], gyro_dps_[2],
-                     accel_g_[0], accel_g_[1], accel_g_[2], mag_ut_[0],
-                     mag_ut_[1], mag_ut_[2]);
+  // MadgwickAHRSupdate(&filter_,
+  //                    gyro_dps_[0], gyro_dps_[1], gyro_dps_[2],
+  //                    accel_g_[0], accel_g_[1], accel_g_[2],
+  //                    mag_ut_[0], mag_ut_[1], mag_ut_[2]);
 
   has_new_data_ = true;
-  orientation_ = Quaternion(filter_.q[0], filter_.q[1], filter_.q[2], filter_.q[3]);
+  // orientation_ = Quaternion(filter_.q[0], filter_.q[1], filter_.q[2], filter_.q[3]);
+
+  // ########################################################################
+  // Fusion
+  // ########################################################################
+
+  // accel_g_[0] = ((double)data_.accel_raw[0] / 16384.0) * GRAVITY;
+  // accel_g_[1] = ((double)data_.accel_raw[1] / 16384.0) * GRAVITY;
+  // accel_g_[2] = ((double)data_.accel_raw[2] / 16384.0) * GRAVITY;
+  // gyro_dps_[0] = (double)data_.gyro_raw[0] / 131.0;
+  // gyro_dps_[1] = (double)data_.gyro_raw[1] / 131.0;
+  // gyro_dps_[2] = (double)data_.gyro_raw[2] / 131.0;
+  // mag_ut_[0] = (double)data_.mag_raw[1];
+  // // mag_ut_[1] = (double)-data_.mag_raw[0];
+  // // mag_ut_[2] = (double)-data_.mag_raw[2];
+  // mag_ut_[1] = (double)data_.mag_raw[0];
+  // mag_ut_[2] = (double)data_.mag_raw[2];
+
+  // accel(g)   = raw_value / (65535 / full_scale)
+  // ex) if full_scale == +-4g then accel = raw_value / (65535 / 8) = raw_value / 8192
+  // gyro(dps)  = raw_value / (65535 / full_scale)
+  // ex) if full_scale == +-250dps then gyro = raw_value / (65535 / 500) = raw_value / 131
+  // mag(uT)    = raw_value / (32752 / 4912) = (approx) (raw_value / 20) * 3
+  // temp  = ((raw_value - ambient_temp) / speed_of_sound) + 21
+
+  // Acquire latest sensor data
+  const double timestamp = rmw_uros_epoch_nanos();  // replace this with actual gyroscope timestamp
+
+  // degrees/s
+  FusionVector gyroscope = {(float)data_.gyro_raw[0] / 131.0f,
+                            (float)data_.gyro_raw[1] / 131.0f,
+                            (float)data_.gyro_raw[2] / 131.0f};
+
+  // accelerometer data in g
+  FusionVector accelerometer = {(float)data_.accel_raw[0] / 16384.0f,
+                                (float)data_.accel_raw[1] / 16384.0f,
+                                (float)data_.accel_raw[2] / 16384.0f};
+
+  // magnetometer data in arbitrary units
+  FusionVector magnetometer = {(float)data_.mag_raw[0],
+                               (float)data_.mag_raw[1],
+                               (float)data_.mag_raw[2]};
+
+  // Apply calibration
+  gyroscope = FusionCalibrationInertial(gyroscope, gyroscopeMisalignment, gyroscopeSensitivity, gyroscopeOffset);
+  accelerometer = FusionCalibrationInertial(accelerometer, accelerometerMisalignment, accelerometerSensitivity, accelerometerOffset);
+  magnetometer = FusionCalibrationMagnetic(magnetometer, softIronMatrix, hardIronOffset);
+
+  // Update gyroscope offset correction algorithm
+  gyroscope = FusionOffsetUpdate(&offset, gyroscope);
+
+  // Calculate delta time (in seconds) to account for gyroscope sample clock error
+  static double previousTimestamp;
+  const float deltaTime = RCUTILS_NS_TO_S(timestamp - previousTimestamp);
+  previousTimestamp = timestamp;
+
+  // Update gyroscope AHRS algorithm
+  FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, deltaTime);
+
+  FusionQuaternion fo = FusionAhrsGetQuaternion(&ahrs);
+  orientation_ = Quaternion{fo.element.w, fo.element.x, fo.element.y, fo.element.z};
+
+  // Returns the linear acceleration measurement with the 1 g of gravity removed.
+  FusionVector accel = FusionAhrsGetLinearAcceleration(&ahrs);
+
+  accel_g_[0] = accel.axis.x * GRAVITY;
+  accel_g_[1] = accel.axis.y * GRAVITY;
+  accel_g_[2] = accel.axis.z * GRAVITY;
+
+  // TODO: FusionAxesSwap to convert from NED to ENU
+
+  // ########################################################################
 
   return ImuErrorCode::OK;
 

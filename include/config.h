@@ -13,6 +13,11 @@
 
 #define NDEBUG
 
+// If this is defined, don't actually send motor commands, just simulate them and publish odom
+// #define ODOM_SIMULATE
+
+// TODO: Put covariance here
+
 static const int MICRO_METERS = 1e6;
 static const int MILLI_METERS = 1e3;
 
@@ -20,13 +25,13 @@ static const int MILLI_METERS = 1e3;
 
 // #define CONTROL_LOOP_HZ 4.0
 #define CONTROL_LOOP_HZ 30
-#define MAIN_LOOP_HZ 20
+#define MAIN_LOOP_HZ 10
 // Run the IMU at a higher rate so the data can be filtered for orientation estimation
-#define TIMER_LOOP_HZ 100
+#define IMU_LOOP_HZ 100
 #define TELEMETRY_LOOP_HZ 2
 
 // Comment out to disable
-// #define WATCHDOG_ENABLED 1
+// #define WATCHDOG_ENABLED
 
 // ----------------------------------
 // START LED RING

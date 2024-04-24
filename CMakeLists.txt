@@ -8,15 +8,19 @@ set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
+file(GLOB_RECURSE fusion_files "lib/Fusion/*.c")
+
 include_directories(
     include
     src/imu
-    lib/SparkFun_ICM-20948_ArduinoLibrary/src/
-    lib/pico-icm20948/
+    lib/SparkFun_ICM-20948_ArduinoLibrary/src
+    lib/pico-icm20948
+    lib/Fusion
 )
 
 
 link_directories(lib/libmicroros)
+
 add_executable(deepdrive_micro
     src/main.cpp
     # src/led_ring_main.c
@@ -40,6 +44,7 @@ add_executable(deepdrive_micro
     src/watchdog.cpp
     src/quaternion.cpp
     
+    src/pubsub.cpp
 
     # Subscribers
     src/sub_cmd_vel.cpp
@@ -58,6 +63,8 @@ add_executable(deepdrive_micro
     # lib/SparkFun_ICM-20948_ArduinoLibrary/src/ICM_20948.cpp
     lib/pico-icm20948/pico-icm20948.c
     lib/pico-icm20948/MadgwickAHRS.c
+
+    ${fusion_files}
 )
 
 # To add to this, here are examples: `cat /usr/src/pico-sdk/test/kitchen_sink/CMakeLists.txt | grep pwm`

@@ -1,5 +1,6 @@
 #include <node.hpp>
 
+// Event handler needs a static callback
 static void subscription_cmd_vel_callback_msg(const void *msgIn) {
   const geometry_msgs__msg__Twist *m = (const geometry_msgs__msg__Twist *)msgIn;
   // Cast received message to used type
