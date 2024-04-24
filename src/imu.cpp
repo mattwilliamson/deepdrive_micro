@@ -2,6 +2,7 @@
 
 #include "node.hpp"
 
+
 IMU::IMU(i2c_inst_t i2c, uint8_t address, uint8_t addressMag, int sda, int scl, int speed) {
   i2c_ = i2c;
   address_ = address;
@@ -28,9 +29,9 @@ IMU::IMU(i2c_inst_t i2c, uint8_t address, uint8_t addressMag, int sda, int scl, 
   // // TODO: Might use this flag to read in background task somehow
   has_new_data_ = false;
 
-  // filter_ = {0.5f, {1.0f, 0.0f, 0.0f, 0.0f}};
+  filter_ = {0.5f, {1.0f, 0.0f, 0.0f, 0.0f}};
 
-  // // TODO: Store mag bias in flash or eeprom
+  // TODO: Store mag bias in flash or eeprom
   data_.mag_bias[0] = 102;
   data_.mag_bias[1] = -77;
   data_.mag_bias[2] = -227;
@@ -265,6 +266,21 @@ int8_t IMU::calibrate() {
 //   return euler;
 // }
 
+// Convert NED to ENU
+// https://answers.ros.org/question/343913/robot_localization-with-imu-and-conventions/
+// https://docs.ros.org/en/melodic/api/robot_localization/html/preparing_sensor_data.html
+// void IMU:ned_to_enu() {
+//   accel_g_[0] = (float)data_.accel_raw[0];
+//   accel_g_[1] = (float)data_.accel_raw[1];
+//   accel_g_[2] = (float)data_.accel_raw[2];
+//   gyro_dps_[0] = (float)data_.gyro_raw[0];
+//   gyro_dps_[1] = (float)data_.gyro_raw[1];
+//   gyro_dps_[2] = (float)data_.gyro_raw[2];
+//   mag_ut_[0] = (float)data_.mag_raw[1];
+//   mag_ut_[1] = (float)-data_.mag_raw[0];
+//   mag_ut_[2] = (float)-data_.mag_raw[2];
+// }
+
 ImuErrorCode IMU::read() {
   icm20948_read_raw_accel(&config_, data_.accel_raw);
   icm20948_read_raw_gyro(&config_, data_.gyro_raw);
@@ -285,6 +301,12 @@ ImuErrorCode IMU::read() {
   mag_ut_[0] = (float)data_.mag_raw[1];
   mag_ut_[1] = (float)-data_.mag_raw[0];
   mag_ut_[2] = (float)-data_.mag_raw[2];
+
+  // Invert Z axis to match robot_localization
+  accel_g_[2] *= -1;
+  gyro_dps_[2] *= -1;
+  mag_ut_[2] *= -1;
+
 
   // Get Orientation by filtering raw data
   MadgwickAHRSupdate(&filter_, gyro_dps_[0], gyro_dps_[1], gyro_dps_[2],

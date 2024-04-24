@@ -121,9 +121,11 @@ class Node {
 
   volatile bool render_led_ring = false;
   volatile bool control_due = false;
+  volatile bool imu_due = false;
 
   repeating_timer_t timer_control;
   repeating_timer_t timer_led_ring;
+  repeating_timer_t timer_imu;
 
   rcl_publisher_t publisher_diagnostic;
   diagnostic_msgs__msg__DiagnosticArray msg_out_diagnostic;

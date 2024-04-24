@@ -15,6 +15,38 @@ static bool trigger_led_ring(repeating_timer_t* rt) {
   return true;
 }
 
+static bool trigger_imu(repeating_timer_t* rt) {
+  Node::getInstance().imu_due = true;
+  return true;
+}
+
+
+int Node::start_control_loop() {
+  // Parallel processing core - RGB LED Ring and control loop
+  multicore_launch_core1(spin_control_loop_callback);
+
+  // Setup control loop timer
+  if (!add_repeating_timer_us(-MICROSECONDS / CONTROL_LOOP_HZ, trigger_control, NULL, &timer_control)) {
+    // printf("Failed to add control loop timer\r\n");
+    return 1;
+  }
+
+  // Setup LED Ring animation loop timer
+  if (!add_repeating_timer_us(-MICROSECONDS / LED_RING_HZ, trigger_led_ring, NULL, &timer_led_ring)) {
+    // printf("Failed to add led ring timer\r\n");
+    return 1;
+  }
+
+    // Setup IMU timer
+  if (!add_repeating_timer_us(-MICROSECONDS / TIMER_LOOP_HZ, trigger_imu, NULL, &timer_imu)) {
+    // printf("Failed to add IMU loop timer\r\n");
+    return 1;
+  }
+
+  return 0;
+}
+
+
 // Second core worker function
 // LED Ring and control loop
 void Node::spin_control_loop() {
@@ -56,13 +88,14 @@ void Node::spin_control_loop() {
 #endif
 
 #ifdef IMU_ENABLED
-
+  if (imu_due) {
     int8_t success = imu.read();
-    sleep_ms(1);
     // if (success != ImuErrorCode::OK) {
     //   printf("Error reading IMU data\r\n");
     //   return;
     // }
+    imu_due = false;
+  }
 #endif
 
     // Sit tight until we have more work to do
@@ -71,22 +104,3 @@ void Node::spin_control_loop() {
   }
 }
 
-
-int Node::start_control_loop() {
-  // Parallel processing core - RGB LED Ring and control loop
-  multicore_launch_core1(spin_control_loop_callback);
-
-  // Setup control loop timer
-  if (!add_repeating_timer_us(-MICROSECONDS / CONTROL_LOOP_HZ, trigger_control, NULL, &timer_control)) {
-    // printf("Failed to add control loop timer\r\n");
-    return 1;
-  }
-
-  // Setup LED Ring animation loop timer
-  if (!add_repeating_timer_us(-MICROSECONDS / LED_RING_HZ, trigger_led_ring, NULL, &timer_led_ring)) {
-    // printf("Failed to add led ring timer\r\n");
-    return 1;
-  }
-
-  return 0;
-}

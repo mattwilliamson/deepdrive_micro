@@ -21,6 +21,8 @@ static const int MILLI_METERS = 1e3;
 // #define CONTROL_LOOP_HZ 4.0
 #define CONTROL_LOOP_HZ 30
 #define MAIN_LOOP_HZ 20
+// Run the IMU at a higher rate so the data can be filtered for orientation estimation
+#define TIMER_LOOP_HZ 100
 #define TELEMETRY_LOOP_HZ 2
 
 // Comment out to disable
@@ -177,7 +179,7 @@ static const int MILLI_METERS = 1e3;
 #define IMU_ADDRESS 0x68
 #define IMU_ADDRESS_MAG 0x0C
 
-#define IMU_FRAME "base_link"
+#define IMU_FRAME "imu_link"
 
 // END IMU
 // ----------------------------------

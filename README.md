@@ -115,18 +115,17 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Average IMU Readings
+- Take another stab at IMU DMP
+- Timeout if no twist received for some period of time and stop motors
+- if a motor is not getting any pulses after some time, raise some kind of error and stop
 - Break up different cpp files into separate classes
 - mutexes for all calculation and publishing
 - .02m/s speed ssems like minimum. add that dead band
 - take minimum pulses for a side to remove outliers
-- Timeout if no twist received for some period of time and stop motors
 - Publish Odom
 - IMU Retries
 - Set status string for diagnostic
-- handle twist properly
-- don't arm motors until ready
-- Mutex on Odom pub vs calculation
-- if a motor is not getting any pulses after some time, raise some kind of error and stop
 
 - clear petg led ring fresnel lens
 - 3m screws for led cover

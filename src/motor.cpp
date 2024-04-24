@@ -83,16 +83,16 @@ void Motor::readPulses() {
   // pulse_count_map[encoderPin_] = 0;
   // ------------------------------------------------
 
-  // Remember the number of pulses since the last loop
-  // average the last two samples to smooth it out for the PID controller
-  pulses_loop_ = (pulses_loop_ + (newPulses * direction_)) / 2;
-
   // Calculate speed for a whole second
   speed_ = pulses_loop_ * CONTROL_LOOP_HZ;
 
   // Update total pulses
   if (newPulses > 0 && direction_ != 0) {
     pulses_ += newPulses * direction_;
+
+    // Remember the number of pulses since the last loop
+    // average the last two samples to smooth it out for the PID controller
+    pulses_loop_ = (pulses_loop_ + (newPulses * direction_)) / 2;
   }
 }
 
