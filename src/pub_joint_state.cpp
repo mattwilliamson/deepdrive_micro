@@ -1,57 +1,72 @@
-#include "node.hpp"
+#include "pub_joint_state.hpp"
 
-int Node::init_joint_state() {
-  // static rmw_subscription_allocation_t * allocation;
+PubJointState::PubJointState(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
+              MotorManager *motor_manager,
+               int64_t timer_hz,
+               const char *topic_name,
+               const char *frame_id) {
+  node_ = node;
+  allocator_ = allocator;
+  support_ = support;
+  msg_ = sensor_msgs__msg__JointState__create();
+  msg_->header.frame_id = micro_ros_string_utilities_init(frame_id);
+  motor_manager_ = motor_manager;
 
-  RCCHECK(rclc_publisher_init_default(
-      &publisher_join_state, &node,
+  msg_->name = *rosidl_runtime_c__String__Sequence__create(MOTOR_COUNT);
+  rosidl_runtime_c__float64__Sequence__init(&msg_->position,  MOTOR_COUNT);
+  rosidl_runtime_c__float64__Sequence__init(&msg_->velocity, MOTOR_COUNT);
+  rosidl_runtime_c__float64__Sequence__init(&msg_->effort, MOTOR_COUNT);
+
+  msg_->name.data[IDX_MOTOR_FRONT_LEFT] = micro_ros_string_utilities_init(MOTOR_JOIN_FRONT_LEFT);
+  msg_->name.data[IDX_MOTOR_BACK_LEFT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_LEFT);
+  msg_->name.data[IDX_MOTOR_FRONT_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_FRONT_RIGHT);
+  msg_->name.data[IDX_MOTOR_BACK_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_RIGHT);
+
+
+  mutex_init(&lock_);
+
+  data_ready_ = false;
+
+  status_ = rclc_publisher_init_default(
+      &publisher_, node_,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
-      "~/joint_state"));
+      topic_name);
 
-  // #define ROSIDL_GET_MSG_TYPE_SUPPORT(PkgName, MsgSubfolder, MsgName) \
-//   ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME( \
-//     rosidl_typesupport_c, PkgName, MsgSubfolder, MsgName)()
-
-  //   RCCHECK(rmw_init_subscription_allocation(
-  //     ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
-  //     ROSIDL_GET_SEQUENCE_BOUNDS(sensor_msgs, msg, JointState),
-  //     &allocation
-  //     ));
-
-  msg_out_joint_state = sensor_msgs__msg__JointState__create();
-  msg_out_joint_state->header.frame_id = micro_ros_string_utilities_init("base_link");
-
-  msg_out_joint_state->name = *rosidl_runtime_c__String__Sequence__create(MOTOR_COUNT);
-  rosidl_runtime_c__float64__Sequence__init(&msg_out_joint_state->position,  MOTOR_COUNT);
-  rosidl_runtime_c__float64__Sequence__init(&msg_out_joint_state->velocity, MOTOR_COUNT);
-  rosidl_runtime_c__float64__Sequence__init(&msg_out_joint_state->effort, MOTOR_COUNT);
-
-  msg_out_joint_state->name.data[IDX_MOTOR_FRONT_LEFT] = micro_ros_string_utilities_init(MOTOR_JOIN_FRONT_LEFT);
-  msg_out_joint_state->name.data[IDX_MOTOR_BACK_LEFT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_LEFT);
-  msg_out_joint_state->name.data[IDX_MOTOR_FRONT_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_FRONT_RIGHT);
-  msg_out_joint_state->name.data[IDX_MOTOR_BACK_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_RIGHT);
-
-  return 0;
-}
-
-
-
-void Node::calculate_joint_state() {
-  /**
-   * The state of each joint (revolute or prismatic) is defined by:
-   *  * the position of the joint (rad or m),
-   *  * the velocity of the joint (rad/s or m/s) and
-   *  * the effort that is applied in the joint (Nm or N).
-   */
-  PubSub::set_timestamp_header(&msg_out_joint_state->header);
-
-  for (int i = 0; i < MOTOR_COUNT; i++) {
-    msg_out_joint_state->position.data[i] = motors[i]->getPosition();
-    msg_out_joint_state->velocity.data[i] = motors[i]->getSpeedRadians();
+  if (!add_repeating_timer_us(-MICROSECONDS / timer_hz, PubJointState::trigger, NULL, &timer_)) {
+    // printf("Failed to add control loop timer\r\n");
+    status_ = -1;
   }
 }
 
+void PubJointState::calculate() {
+  if (!_pub_jointstate_triggered) {
+    return;
+  }
 
-void Node::publish_joint_state() {
-  RCSOFTCHECK(rcl_publish(&publisher_join_state, msg_out_joint_state, NULL));
+  mutex_enter_blocking(&lock_);
+
+  auto motors = motor_manager_->get_motors();
+  
+  for (int i = 0; i < MOTOR_COUNT; i++) {
+    msg_->position.data[i] = motors[i]->getPosition();
+    msg_->velocity.data[i] = motors[i]->getSpeedRadians();
+  }
+
+  // Set timestamp
+  PubSub::set_timestamp_header(&msg_->header);
+
+  data_ready_ = true;
+  _pub_jointstate_triggered = false;
+
+  // Don't publish a transform. robot_localization will fuse our estimates and do that
+  mutex_exit(&lock_);
+}
+
+void PubJointState::publish() {
+  mutex_enter_blocking(&lock_);
+  if (data_ready_) {
+    status_ = rcl_publish(&publisher_, msg_, NULL);
+    data_ready_ = false;
+  }
+  mutex_exit(&lock_);
 }

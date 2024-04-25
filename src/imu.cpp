@@ -312,34 +312,14 @@ ImuErrorCode IMU::read() {
   gyro_dps_[1] = (double)data_.gyro_raw[1] / 131.0;
   gyro_dps_[2] = (double)data_.gyro_raw[2] / 131.0;
   mag_ut_[0] = (double)data_.mag_raw[1];
-  // mag_ut_[1] = (double)-data_.mag_raw[0];
-  // mag_ut_[2] = (double)-data_.mag_raw[2];
   mag_ut_[1] = (double)data_.mag_raw[0];
   mag_ut_[2] = (double)data_.mag_raw[2];
 
-  // MadgwickAHRSupdate(&filter_,
-  //                    gyro_dps_[0], gyro_dps_[1], gyro_dps_[2],
-  //                    accel_g_[0], accel_g_[1], accel_g_[2],
-  //                    mag_ut_[0], mag_ut_[1], mag_ut_[2]);
-
   has_new_data_ = true;
-  // orientation_ = Quaternion(filter_.q[0], filter_.q[1], filter_.q[2], filter_.q[3]);
 
   // ########################################################################
   // Fusion
   // ########################################################################
-
-  // accel_g_[0] = ((double)data_.accel_raw[0] / 16384.0) * GRAVITY;
-  // accel_g_[1] = ((double)data_.accel_raw[1] / 16384.0) * GRAVITY;
-  // accel_g_[2] = ((double)data_.accel_raw[2] / 16384.0) * GRAVITY;
-  // gyro_dps_[0] = (double)data_.gyro_raw[0] / 131.0;
-  // gyro_dps_[1] = (double)data_.gyro_raw[1] / 131.0;
-  // gyro_dps_[2] = (double)data_.gyro_raw[2] / 131.0;
-  // mag_ut_[0] = (double)data_.mag_raw[1];
-  // // mag_ut_[1] = (double)-data_.mag_raw[0];
-  // // mag_ut_[2] = (double)-data_.mag_raw[2];
-  // mag_ut_[1] = (double)data_.mag_raw[0];
-  // mag_ut_[2] = (double)data_.mag_raw[2];
 
   // accel(g)   = raw_value / (65535 / full_scale)
   // ex) if full_scale == +-4g then accel = raw_value / (65535 / 8) = raw_value / 8192
@@ -387,210 +367,29 @@ ImuErrorCode IMU::read() {
 
   // Returns the linear acceleration measurement with the 1 g of gravity removed.
   FusionVector accel = FusionAhrsGetLinearAcceleration(&ahrs);
+  accel_g_[0] = accel.axis.x;
+  accel_g_[1] = accel.axis.y;
+  accel_g_[2] = accel.axis.z;
 
-  accel_g_[0] = accel.axis.x * GRAVITY;
-  accel_g_[1] = accel.axis.y * GRAVITY;
-  accel_g_[2] = accel.axis.z * GRAVITY;
-
-  // TODO: FusionAxesSwap to convert from NED to ENU
+  // TODO: FusionAxesSwap to convert from NED to ENU, instead of manual conversion
 
   // ########################################################################
 
   return ImuErrorCode::OK;
-
-  // if (!imu_.dataReady()) {
-  //   sleep_ms(1);
-  //   return ImuErrorCode::NO_DATA;
-  // }
-
-  // imu_.getAGMT();
-  // if (imu_.status != ICM_20948_Stat_Ok) {
-  //   sleep_ms(1);
-  //   return ImuErrorCode::ERROR;
-  // }
-  // // TODO: Check status
-
-  //   // return {accel_g_[0] * GRAVITY, accel_g_[1] * GRAVITY, accel_g_[2] * GRAVITY};
-  // accel_g_[0] = imu_.accX();  // * GRAVITY
-  // accel_g_[1] = imu_.accY();  // * GRAVITY
-  // accel_g_[2] = imu_.accZ();  // * GRAVITY
-
-  // // return {gyro_dps_[0] / RAD_TO_DEG, gyro_dps_[1] / RAD_TO_DEG, gyro_dps_[2] / RAD_TO_DEG};
-  // gyro_dps_[0] = imu_.gyrX(); //  / RAD_TO_DEG
-  // gyro_dps_[1] = imu_.gyrY(); //  / RAD_TO_DEG
-  // gyro_dps_[2] = imu_.gyrZ(); //  / RAD_TO_DEG
-
-  // // return {mag_ut_[0], mag_ut_[1], mag_ut_[2]};
-  // mag_ut_[0] = imu_.magX();
-  // mag_ut_[1] = imu_.magY();
-  // mag_ut_[2] = imu_.magZ();
-
-  // data_.temp_c = imu_.temp();
-
-  // return ImuErrorCode::OK;
-
-  // // Read any DMP data waiting in the FIFO
-  // // Note:
-  // //    readDMPdataFromFIFO will return ICM_20948_Stat_FIFONoDataAvail if no data is available.
-  // //    If data is available, readDMPdataFromFIFO will attempt to read _one_ frame of DMP data.
-  // //    readDMPdataFromFIFO will return ICM_20948_Stat_FIFOIncompleteData if a frame was present but was incomplete
-  // //    readDMPdataFromFIFO will return ICM_20948_Stat_Ok if a valid frame was read.
-  // //    readDMPdataFromFIFO will return ICM_20948_Stat_FIFOMoreDataAvail if a valid frame was read _and_ the FIFO contains more (unread) data.
-  // icm_20948_DMP_data_t dmp_data_;
-  // imu_.readDMPdataFromFIFO(&dmp_data_);
-
-  // if ((imu_.status != ICM_20948_Stat_Ok) && (imu_.status != ICM_20948_Stat_FIFOMoreDataAvail) || dmp_data_.header == 0) {
-  //   return ImuErrorCode::NO_DATA;
-  // }
-
-  // // TODO: Temperature
-
-  // // TODO: Handle DMP_Motion_Event_Control_Register_Bits
-  // // DMP_Header2_Bitmap
-  // // DMP_header2_bitmap_Activity_Recog
-
-  // if ((dmp_data_.header & DMP_header_bitmap_Quat9) > 0) {  // We have asked for orientation data so we should receive Quat9
-  //   // Q0 value is computed from this equation: Q0^2 + Q1^2 + Q2^2 + Q3^2 = 1.
-  //   // In case of drift, the sum will not add to 1, therefore, quaternion data need to be corrected with right bias values.
-  //   // The quaternion data is scaled by 2^30.
-
-  //   // SERIAL_PORT.printf("Quat9 data is: Q1:%ld Q2:%ld Q3:%ld Accuracy:%d\r\n", data.Quat9.Data.Q1, data.Quat9.Data.Q2, data.Quat9.Data.Q3, data.Quat9.Data.Accuracy);
-  //   //  TODO: Handle accuracy
-
-  //   // Scale to +/- 1
-  //   const double scale = pow(2, 30);  // 1073741824.0 2^30
-
-  //   double q1 = dmp_data_.Quat9.Data.Q1;
-  //   double q2 = dmp_data_.Quat9.Data.Q2;
-  //   double q3 = dmp_data_.Quat9.Data.Q3;
-
-  //   // q1 /= scale;  // 0.31
-  //   // q2 /= scale;  // -1.94
-  //   // q3 /= scale;  // 1.01
-
-  //   // // double q0 = sqrt(1.0 - ((q1 * q1) + (q2 * q2) + (q3 * q3)));
-  //   // double q0 = ((q1 * q1) + (q2 * q2) + (q3 * q3));  // 4.9
-  //   // q0 = 1.0 - q0;                                    // -3.9
-  //   // q0 = sqrt(q0);                                    // -inf
-  //   // if (q0 < 0) {
-  //   //   q0 = 1.0;
-  //   // }
-
-  //   double q0 = sqrt(1.0 - ((q1 * q1) + (q2 * q2) + (q3 * q3)));
-  //   // double q0 = dmp_data_.Quat9.Data.Q0 / 1073741824.0; // Convert to double. Divide by 2^30
-
-  //   orientation_ = Quaternion{q0, q1, q2, q3};
-
-  //   // orientation_.normalize();
-
-  //   has_new_data_ = true;
-
-  //   // TODO: error handling
-  //   return ImuErrorCode::OK;
-  // } else if ((dmp_data_.header & DMP_header_bitmap_Accel) > 0) {
-  //   accel_g_[0] = (float)dmp_data_.Raw_Accel.Data.X * GRAVITY;
-  //   accel_g_[1] = (float)dmp_data_.Raw_Accel.Data.Y * GRAVITY;
-  //   accel_g_[2] = (float)dmp_data_.Raw_Accel.Data.Z * GRAVITY;
-  //   has_new_data_ = true;
-  //   return ImuErrorCode::OK;
-  // } else if ((dmp_data_.header & DMP_header_bitmap_Gyro) > 0) {
-  //   // gyro_dps_[0] = (float)dmp_data_.Raw_Gyro.Data.X / 131.0f;
-  //   // gyro_dps_[1] = (float)dmp_data_.Raw_Gyro.Data.Y / 131.0f;
-  //   // gyro_dps_[2] = (float)dmp_data_.Raw_Gyro.Data.Z / 131.0f;
-  //   gyro_dps_[0] = (float)dmp_data_.Raw_Gyro.Data.X;
-  //   gyro_dps_[1] = (float)dmp_data_.Raw_Gyro.Data.Y;
-  //   gyro_dps_[2] = (float)dmp_data_.Raw_Gyro.Data.Z;
-  //   has_new_data_ = true;
-  //   return ImuErrorCode::OK;
-  // } else if ((dmp_data_.header & DMP_header_bitmap_Compass) > 0) {
-  //   mag_ut_[0] = (float)dmp_data_.Compass.Data.Y;
-  //   mag_ut_[1] = (float)-dmp_data_.Compass.Data.X;
-  //   mag_ut_[2] = (float)-dmp_data_.Compass.Data.Z;
-  //   has_new_data_ = true;
-  //   return ImuErrorCode::OK;
-  // } else if ((dmp_data_.header2 & DMP_header2_bitmap_Pickup) > 0) {
-  //   // We got picked up!!!
-  //   return ImuErrorCode::OK;
-  // }
-  //   // SERIAL_PORT.printf("Quat6 data is: Q1:%ld Q2:%ld Q3:%ld Accuracy:%d\r\n", data.Quat6.Data.Q1, data.Quat6.Data.Q2, data.Quat6.Data.Q3, data.Quat6.Data.Accuracy);
-
-  // // else return error
-
-  // // Old library:
-  // // icm20948_read_raw_accel(&config_, data_.accel_raw);
-  // // icm20948_read_raw_gyro(&config_, data_.gyro_raw);
-  // // icm20948_read_raw_mag(&config_, data_.mag_raw);
-  // // icm20948_read_temp_c(&config_, &data_.temp_c);
-
-  // // icm20948_read_cal_accel(&config_, &data_.accel_raw[0], &data_.accel_bias[0]);
-  // // icm20948_read_cal_gyro(&config_, &data_.gyro_raw[0], &data_.gyro_bias[0]);
-  // // icm20948_read_cal_mag(&config_, &data_.mag_raw[0], &data_.mag_bias[0]);
-  // // icm20948_read_temp_c(&config_, &data_.temp_c);
-
-  // // accel(g)   = raw_value / (65535 / full_scale)
-  // // ex) if full_scale == +-4g then accel = raw_value / (65535 / 8) = raw_value
-  // // / 8192 gyro(dps)  = raw_value / (65535 / full_scale) ex) if full_scale ==
-  // // +-250dps then gyro = raw_value / (65535 / 500) = raw_value / 131 mag(uT) =
-  // // raw_value / (32752 / 4912) = (approx) (raw_value / 20) * 3 temp  =
-  // // ((raw_value - ambient_temp) / speed_of_sound) + 21
-
-  // // 0: x, 1: y, 2: z
-  // // accel_g_[0] = (float)data_.accel_raw[0] / 16384.0f * GRAVITY;
-  // // accel_g_[1] = (float)data_.accel_raw[1] / 16384.0f * GRAVITY;
-  // // accel_g_[2] = (float)data_.accel_raw[2] / 16384.0f * GRAVITY;
-  // // gyro_dps_[0] = (float)data_.gyro_raw[0] / 131.0f;
-  // // gyro_dps_[1] = (float)data_.gyro_raw[1] / 131.0f;
-  // // gyro_dps_[2] = (float)data_.gyro_raw[2] / 131.0f;
-  // // mag_ut_[0] = (float)data_.mag_raw[1];
-  // // mag_ut_[1] = (float)-data_.mag_raw[0];
-  // // mag_ut_[2] = (float)-data_.mag_raw[2];
-
-  // // accel_g_[0] = (float)data_.accel_raw[0] / GRAVITY;
-  // // accel_g_[1] = (float)data_.accel_raw[1] / GRAVITY;
-  // // accel_g_[2] = (float)data_.accel_raw[2] / GRAVITY;
-
-  // // Get Orientation by filtering raw data
-  // // MadgwickAHRSupdate(&filter_, gyro_dps_[0], gyro_dps_[1], gyro_dps_[2],
-  // //                    accel_g_[0], accel_g_[1], accel_g_[2], mag_ut_[0],
-  // //                    mag_ut_[1], mag_ut_[2]);
-
-  // // MadgwickAHRSupdateIMU(&filter_, gyro_dps_[0], gyro_dps_[1], gyro_dps_[2],
-  // // accel_g_[0] * 9.8, accel_g_[1] * 9.8, accel_g_[2] * 9.8);
-
-  // // float euler[3];
-  // // quaternianToEuler(&filter_, euler); // rad
-
-  // // printf("(data->q[0]) %0.1f, (data->q[1]) %0.1f, (data->q[2]) %0.1f,
-  // // (data->q[3]) %0.1f\n", (data->q[0]), (data->q[1]), (data->q[2]),
-  // // (data->q[3])); printf("Roll %0.1f, Pitch %0.1f, Yaw %0.1f\n", euler[0]
-  // // * 57.29578f, euler[1] * 57.29578f, euler[2] * 57.29578f + 180.0f);
-  // //  printf("D %0.1f %0.1f %0.1f\n", euler[2] * 57.29578f, euler[1]
-  // //  * 57.29578f, euler[0] * 57.29578f);
-
-  // // TODO: Calibration
-
-  return ImuErrorCode::ERROR;
 }
 
 Vector3 IMU::getAccel() {
-  // return {accel_g_[0] * GRAVITY, accel_g_[1] * GRAVITY, accel_g_[2] * GRAVITY};
-  // return {data_.accel_raw[0], data_.accel_raw[1], data_.accel_raw[2]};
-  return {accel_g_[0], accel_g_[1], accel_g_[2]};
+  return {accel_g_[0] * GRAVITY, accel_g_[1] * GRAVITY, accel_g_[2] * GRAVITY};
 }
 
 Vector3 IMU::getGyro() {
-  // return {gyro_dps_[0], gyro_dps_[1], gyro_dps_[2]};
-  // return {data_.gyro_raw[0], data_.gyro_raw[1], data_.gyro_raw[2]};
   return {gyro_dps_[0] / RAD_TO_DEG, gyro_dps_[1] / RAD_TO_DEG, gyro_dps_[2] / RAD_TO_DEG};
 }
 
 Vector3 IMU::getMag() {
-  // return {data_.mag_raw[0], data_.mag_raw[1], data_.mag_raw[2]};
   return {mag_ut_[0], mag_ut_[1], mag_ut_[2]};
 }
 
 Quaternion IMU::getOrientation() {
-  // w, x, y, z
-  // return Quaternion{filter_.q[0], filter_.q[1], filter_.q[2], filter_.q[3]};
   return orientation_;
 }

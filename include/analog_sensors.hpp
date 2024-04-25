@@ -19,7 +19,7 @@ class AnalogSensors {
   /**
    * @brief Initializes the analog sensors.
    */
-  void init();
+  AnalogSensors();
 
   /**
    * @brief Gets the battery voltage.

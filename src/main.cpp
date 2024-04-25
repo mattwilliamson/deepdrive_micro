@@ -6,7 +6,7 @@ extern "C" {
 
 #include "led_ring.hpp"
 #include "motor.hpp"
-#include "pub_diagnostic.hpp"
+#include "pub_telemetry.hpp"
 #include "status.hpp"
 
 #ifdef IMU_ENABLED

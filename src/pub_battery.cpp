@@ -17,8 +17,7 @@ int Node::init_battery() {
 void Node::publish_battery() {
   // TODO: Do this in the other core
   msg_out_battery.voltage = analog_sensors->getBatteryVoltage();
-  msg_out_battery.percentage =
-      AnalogSensors::convertVoltageToPercentage(msg_out_battery.voltage);
+  msg_out_battery.percentage = AnalogSensors::convertVoltageToPercentage(msg_out_battery.voltage);
 
   msg_out_battery.present = true;
   msg_out_battery.temperature = analog_sensors->getTemperature();

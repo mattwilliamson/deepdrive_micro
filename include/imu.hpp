@@ -29,7 +29,6 @@ extern "C" {
 #include "hardware/i2c.h"
 #include "pico-icm20948.h"
 #include "pico/stdlib.h"
-// #include "MadgwickAHRS.h"
 #include "Fusion.h"
 }
 
@@ -167,7 +166,7 @@ class IMU {
   // ICM_20948_I2C imu_;
 
   icm20948_config_t config_;
-  // madgwick_ahrs_t filter_;
+
   icm20984_data_t data_;  // Data structure to store sensor readings.
 
   i2c_inst_t i2c_;      // The I2C instance used for communication with the IMU sensor.

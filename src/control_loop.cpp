@@ -15,12 +15,6 @@ static bool trigger_led_ring(repeating_timer_t* rt) {
   return true;
 }
 
-static bool trigger_imu(repeating_timer_t* rt) {
-  Node::getInstance().imu_due = true;
-  return true;
-}
-
-
 int Node::start_control_loop() {
   // Parallel processing core - RGB LED Ring and control loop
   multicore_launch_core1(spin_control_loop_callback);
@@ -37,15 +31,8 @@ int Node::start_control_loop() {
     return 1;
   }
 
-    // Setup IMU timer
-  if (!add_repeating_timer_us(-MICROSECONDS / IMU_LOOP_HZ, trigger_imu, NULL, &timer_imu)) {
-    // printf("Failed to add IMU loop timer\r\n");
-    return 1;
-  }
-
   return 0;
 }
-
 
 // Second core worker function
 // LED Ring and control loop
@@ -60,16 +47,15 @@ void Node::spin_control_loop() {
       control_due = false;
 
       // Read any motor encoder pulses
-      for (auto& motor : motors) {
-        motor->updateMotorOutput();
-      }
+      motor_manager_->update_motor_outputs();
 
+      pub_odom->calculate();
+      pub_imu->calculate();
+      pub_telemetry->calculate();
+      pub_joint_state->calculate();
 
       // TODO: Do other processing here to make publishing on core0 as fast as
       // possible e.g. calculate odometry, publish sensor data, etc.
-
-      calculate_joint_state();
-      publisher_odom->calculate();
 
       core_elapsed[1] = time_us_64() - core_start[1];
     }
@@ -87,22 +73,8 @@ void Node::spin_control_loop() {
     }
 #endif
 
-#ifdef IMU_ENABLED
-  if (imu_due) {
-    mutex_enter_blocking(&imu_lock);
-    int8_t success = imu.read();
-    // if (success != ImuErrorCode::OK) {
-    //   printf("Error reading IMU data\r\n");
-    //   return;
-    // }
-    imu_due = false;
-    mutex_exit(&imu_lock);
-  }
-#endif
-
     // Sit tight until we have more work to do
     tight_loop_contents();
     // sleep_ms(1);
   }
 }
-

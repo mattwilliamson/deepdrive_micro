@@ -48,13 +48,17 @@ extern "C" {
 }
 
 #include "analog_sensors.hpp"
-#include "imu.hpp"
 #include "led_ring.hpp"
 #include "motor.hpp"
 #include "quaternion.hpp"
 #include "status.hpp"
 #include "pubsub.hpp"
 #include "pub_odom.hpp"
+#include "pub_imu.hpp"
+#include "motor_manager.hpp"
+#include "pub_telemetry.hpp"
+#include "pub_joint_state.hpp"
+#include "sub_cmd_vel.hpp"
 
 /**
  * @class Node
@@ -80,55 +84,36 @@ class Node {
   rclc_support_t support;
   rclc_executor_t executor;
   rcl_timer_t timer_main_loop;
-  rcl_timer_t timer_telemetry_loop;
-  rclc_parameter_server_t param_server;
+  // rclc_parameter_server_t param_server;
 
-  rcl_publisher_t publisher_motor_cmd;
-  rcl_publisher_t publisher_motor_speed;
   rcl_publisher_t publisher_battery;
-  rcl_publisher_t publisher_join_state;
-  rcl_publisher_t publisher_imu;
-  rcl_publisher_t publisher_mag;
+  // rcl_publisher_t publisher_join_state;
+  // rcl_publisher_t publisher_mag;
 
-  PubOdom *publisher_odom;
+  PubOdom *pub_odom;
+  PubImu *pub_imu;
+  PubTelemetry *pub_telemetry;
+  PubJointState *pub_joint_state;
 
-  control_msgs__msg__MecanumDriveControllerState mgs_out_motor_speed;  // TODO: Find the create function for this
-  control_msgs__msg__MecanumDriveControllerState mgs_out_motor_cmd;  // TODO: Find the create function for this
+  SubCmdVel *sub_cmd_vel;
+
+  // control_msgs__msg__MecanumDriveControllerState mgs_out_motor_speed;  // TODO: Find the create function for this
   sensor_msgs__msg__BatteryState msg_out_battery;                // TODO: Find the create function for this
-  sensor_msgs__msg__JointState* msg_out_joint_state;
-  sensor_msgs__msg__Imu* msg_out_imu;
-  sensor_msgs__msg__MagneticField* msg_out_mag;
+  
 
-  rcl_subscription_t subscriber_motor;
-  control_msgs__msg__MecanumDriveControllerState msg_in_motor;
-
-  rcl_subscription_t subscriber_cmd_vel;
-  geometry_msgs__msg__Twist msg_in_cmd_vel;
-
-  IMU imu;
-  mutex_t imu_lock;
 
   LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
   StatusManager status;
-  std::vector<Motor*> motors;
 
   // TODO: Do I need to publish trajectory_msgs__msg__JointTrajectoryPoint ?
 
   volatile bool render_led_ring = false;
   volatile bool control_due = false;
-  volatile bool imu_due = false;
 
   repeating_timer_t timer_control;
   repeating_timer_t timer_led_ring;
-  repeating_timer_t timer_imu;
-
-  rcl_publisher_t publisher_diagnostic;
-  diagnostic_msgs__msg__DiagnosticArray msg_out_diagnostic;
 
   AnalogSensors* analog_sensors;
-
-  uint64_t core_start[2] = {0, 0};
-  uint64_t core_elapsed[2] = {0, 0};
 
   void RCCHECK(rcl_ret_t error_code) {
     if (error_code != RCL_RET_OK) {
@@ -152,9 +137,6 @@ class Node {
 
   Node();
 
-  std::vector<Motor*> getMotors() {
-    return motors;
-  }
 
   // Run control loop in a separate core
   void spin_control_loop();
@@ -176,47 +158,17 @@ class Node {
   // Top level main loop
   void spin();
 
-  /**
-   * Initializes the motors.
-   *
-   * This function initializes the motors used by the rover.
-   * It performs any necessary setup and configuration.
-   *
-   * @return An integer value indicating the success or failure of the initialization.
-   *         A return value of 0 indicates success, while a non-zero value indicates failure.
-   */
-  int init_motors();
-
-  void disable_motors();
-
-  void enable_motors();
-
-  // Telemetry
-  int init_telemetry_loop();
-  int start_telemetry_loop();
-  void spin_telemetry_loop(rcl_timer_t* timer_telemetry_loop, int64_t last_call_time);
+  MotorManager *motor_manager_;
 
   // Watchdog
   void init_watchdog();
 
   // Param server
-  int init_param_server();
-  bool on_parameter_changed(const Parameter* old_param,
-                            const Parameter* new_param, void* context);
-  bool isDoubleNamed(const Parameter* new_param, const char* name);
+  // int init_param_server();
+  // bool on_parameter_changed(const Parameter* old_param,
+  //                           const Parameter* new_param, void* context);
+  // bool isDoubleNamed(const Parameter* new_param, const char* name);
 
-  // SUBSCRIBERS
-
-  // Cmd vel subscriber callback
-  int init_cmd_vel();
-  void subscription_cmd_vel_callback(const geometry_msgs__msg__Twist* m);
-
-  // Motor inividual command subscriber
-  int init_sub_motor();
-  void subscription_motor_callback(
-      const control_msgs__msg__MecanumDriveControllerState* m);
-
-  // PUBLISHERS
 
   // Motor Publisher
   void init_motor_pub();
@@ -230,17 +182,8 @@ class Node {
   int init_battery();
   void publish_battery();
 
-  // Joint State publisher
-  int init_joint_state();
-  void calculate_joint_state();
-  void publish_joint_state();
-
-  // IMU publisher
-  int init_imu();
-  void publish_imu();
-
   // TODO: Maybe put this in a destructor
-  void shutdown();
+  ~Node();
 
   /*
    * \return #RCL_RET_OK if the client was initialized successfully, or

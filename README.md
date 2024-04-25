@@ -115,55 +115,41 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-- Use just veloicty for odom
-- Odom simulator
 - Watchdog for restarts
-- Transform IMU frame
 - IMU SPI?
 - Average IMU Readings
-- Take another stab at IMU DMP
 - Timeout if no twist received for some period of time and stop motors
 - if a motor is not getting any pulses after some time, raise some kind of error and stop
 - Break up different cpp files into separate classes
-- mutexes for all calculation and publishing
-- .02m/s speed ssems like minimum. add that dead band
 - take minimum pulses for a side to remove outliers
-- Publish Odom
 - IMU Retries
 - Set status string for diagnostic
+- average battery voltage
 
+- move lidar back to make room for usb
 - clear petg led ring fresnel lens
 - 3m screws for led cover
 - IMU AD0 pin connect to address select
-- IMU calibration: https://github.com/mattwilliamson/deepdrive_micro/commit/6a417c4e63e32671b85648450a2366626a14d2dd#diff-97ccfa9770f9d7f64ec98c8791e52b315f7ed2c2cf4eb915823ea091dc1241d6R196 for accelerometer + gyro, just read a bunch of times and average it. that's the bias to set
 - IMU Shock detected
-- IMU Not working on PCB - 2 sda and 2 scl?
 - IMU Interrupts 
 - IMU Quaternion accuracy header
 
 - tpu spacer gasket for pcb screws
 - tpu gasket for behind camera
 - publish twistwithcovariancestamped instead of odom?
-- robot_localization
 - timeout i2c for imu so it doesn't freeze everything
 - power on self test (thinking about IMU here)
 - scaling imu output (Gs) - we don't need 8 Gs worth of scale
-- imu is sampling at 100hz, but our control loop is 50hz - not a problem if we do onboard dmp
 
 - param server for pid, speed, etc - mostly coded, just needs to fix the build
 - use flash to save params
-- use mutex to lock status? https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#mutex
 
-- Perhaps 2 nodes?
 - speed up publishing with static memory https://github.com/micro-ROS/micro-ROS-demos/blob/humble/rclc/static_type_handling/main.c https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
-
 
 
 ### Motor Feedback Loop
 - interpolators for counting pulses? or pio
 - pid controller on interpolator?
 - back right encoder is giving some noisy pulse counts (there was a solder bridge)
-- tune pid controller - output speed might not be correct (might not be estimating speed accurately)
 
-- Driving high the SMPS mode pin (GPIO23), to force the power supply into PWM mode, can greatly reduce the - inherent ripple of the SMPS at light load, and therefore the ripple on the ADC supply. This does reduce the - power efficiency of the board at light load, so the low-power PFM mode can be re-enabled between infrequent ADC - measurements by driving GPIO23 low once more. See Section 4.4.
 

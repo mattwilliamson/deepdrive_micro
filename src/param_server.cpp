@@ -42,7 +42,7 @@ bool Node::on_parameter_changed(const Parameter *old_param,
   return true;
 }
 
-int Node::init_param_server() {
+// int Node::init_param_server() {
   // TODO: Increment memory handles
   // const size_t uRosHandles = 12 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
 
@@ -84,5 +84,5 @@ int Node::init_param_server() {
   // rclc_parameter_set_double(&param_server, PARAM_PID_KI, 0.0);
   // rclc_parameter_set_double(&param_server, PARAM_PID_KD, 0.0);
 
-  return 0;
-}
+  // return 0;
+// }

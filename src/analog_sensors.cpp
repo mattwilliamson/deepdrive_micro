@@ -1,6 +1,6 @@
 #include "analog_sensors.hpp"
 
-void AnalogSensors::init() {
+AnalogSensors::AnalogSensors() {
   adc_init();
   adc_gpio_init(PIN_BATTERY_VOLTAGE);
   adc_set_temp_sensor_enabled(true);

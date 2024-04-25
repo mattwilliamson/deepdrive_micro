@@ -31,13 +31,14 @@ add_executable(deepdrive_micro
     src/control_loop.cpp
     src/main_loop.cpp
 
-    src/param_server.cpp
-    src/telemetry.cpp
+    # src/param_server.cpp
+
     src/status.cpp
 
     src/led_ring.cpp
     src/led_status.c
     src/motor.cpp
+    src/motor_manager.cpp
     src/imu.cpp
     src/pid.cpp
     src/analog_sensors.cpp
@@ -48,21 +49,18 @@ add_executable(deepdrive_micro
 
     # Subscribers
     src/sub_cmd_vel.cpp
-    src/sub_motor.cpp
 
     # Publishers
-    src/pub_diagnostic.cpp
     src/pub_odom.cpp
+    src/pub_telemetry.cpp
     src/pub_battery.cpp
     src/pub_imu.cpp
-    src/pub_motor.cpp
     src/pub_joint_state.cpp
 
     # IMU
     # lib/SparkFun_ICM-20948_ArduinoLibrary/src/util/ICM_20948_C.c
     # lib/SparkFun_ICM-20948_ArduinoLibrary/src/ICM_20948.cpp
     lib/pico-icm20948/pico-icm20948.c
-    lib/pico-icm20948/MadgwickAHRS.c
 
     ${fusion_files}
 )

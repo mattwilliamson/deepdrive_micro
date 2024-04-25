@@ -1,13 +1,13 @@
 #include "pub_odom.hpp"
 
 PubOdom::PubOdom(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
-                 std::vector<Motor *> motors,
+                 MotorManager *motor_manager,
                  int64_t timer_hz,
                  const char *topic_name, const char *frame_id, const char *child_frame_id) {
   node_ = node;
   allocator_ = allocator;
   support_ = support;
-  motors_ = motors;
+  motor_manager_ = motor_manager;
   msg_ = nav_msgs__msg__Odometry__create();
 
   mutex_init(&lock_);
@@ -58,18 +58,24 @@ PubOdom::PubOdom(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *all
 }
 
 void PubOdom::calculate() {
+  if (!_pub_odom_triggered) {
+    return;
+  }
+
   mutex_enter_blocking(&lock_);
   // TODO: Flag that the data has been processed
 
   // Do this on core1 to free up cycle time on core0
 
+  auto motors = motor_manager_->get_motors();
+
   // Meters traveled per side since last loop
-  Micrometers left = (motors_[IDX_MOTOR_FRONT_LEFT]->getMicrometersLoop() +
-                      motors_[IDX_MOTOR_BACK_LEFT]->getMicrometersLoop()) /
+  Micrometers left = (motors[IDX_MOTOR_FRONT_LEFT]->getMicrometersLoop() +
+                      motors[IDX_MOTOR_BACK_LEFT]->getMicrometersLoop()) /
                      2.0;
 
-  Micrometers right = (motors_[IDX_MOTOR_FRONT_RIGHT]->getMicrometersLoop() +
-                       motors_[IDX_MOTOR_BACK_RIGHT]->getMicrometersLoop()) /
+  Micrometers right = (motors[IDX_MOTOR_FRONT_RIGHT]->getMicrometersLoop() +
+                       motors[IDX_MOTOR_BACK_RIGHT]->getMicrometersLoop()) /
                       2.0;
 
   // Calculate the average linear distance to figure where the center of mass has moved
@@ -123,10 +129,9 @@ void PubOdom::calculate() {
 
 void PubOdom::publish() {
   mutex_enter_blocking(&lock_);
-  if (_pub_odom_triggered && data_ready_) {
+  if (data_ready_) {
     status_ = rcl_publish(&publisher_, msg_, NULL);
     data_ready_ = false;
-    _pub_odom_triggered = false;
   }
   mutex_exit(&lock_);
 }
