@@ -1,4 +1,11 @@
-#include "pub_imu.hpp"
+#include "pubsub/pub_imu.hpp"
+
+static bool _pub_imu_triggered;
+
+bool PubImu::trigger(repeating_timer_t *rt) {
+  _pub_imu_triggered = true;
+  return true;
+}
 
 PubImu::PubImu(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
                int64_t timer_hz,
@@ -66,13 +73,13 @@ void PubImu::calculate() {
   msg_->angular_velocity_covariance[4] = 0.1;
   msg_->angular_velocity_covariance[8] = 0.1;
 
-  Quaternion orientation = imu.getOrientation();
+  FusionQuaternion orientation = imu.getOrientation();
 
   // NED -> ENU conversion
-  msg_->orientation.x = orientation.y;
-  msg_->orientation.y = orientation.x;
-  msg_->orientation.z = -orientation.z;
-  msg_->orientation.w = orientation.w;
+  msg_->orientation.x = orientation.element.y;
+  msg_->orientation.y = orientation.element.x;
+  msg_->orientation.z = -orientation.element.z;
+  msg_->orientation.w = orientation.element.w;
 
   msg_->orientation_covariance[0] = 0.1;
   msg_->orientation_covariance[4] = 0.1;
@@ -105,4 +112,9 @@ void PubImu::publish() {
     data_ready_ = false;
   }
   mutex_exit(&lock_);
+}
+
+PubImu::~PubImu() {
+  cancel_repeating_timer(&timer_);
+  status_ = rcl_publisher_fini(&publisher_, node_);
 }

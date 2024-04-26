@@ -1,6 +1,7 @@
 #include "analog_sensors.hpp"
 
 AnalogSensors::AnalogSensors() {
+  mutex_init(&lock_);
   adc_init();
   adc_gpio_init(PIN_BATTERY_VOLTAGE);
   adc_set_temp_sensor_enabled(true);
@@ -11,6 +12,7 @@ AnalogSensors::AnalogSensors() {
 
 float AnalogSensors::getBatteryVoltage() {
   // TODO: Average battery over time
+  
 
   // Disable power saving
   gpio_put(23, 1);
@@ -40,6 +42,8 @@ float AnalogSensors::getBatteryVoltage() {
 }
 
 double AnalogSensors::getTemperature() {
+  mutex_enter_blocking(&lock_);
+
   // Disable power saving
   gpio_put(23, 1);
 
@@ -53,6 +57,8 @@ double AnalogSensors::getTemperature() {
 
   // Enable power saving
   gpio_put(23, 0);
+
+  mutex_exit(&lock_);
 
   return tempC;
 }

@@ -1,28 +1,12 @@
 #ifndef PUB_JOINTSTATE_HPP
 #define PUB_JOINTSTATE_HPP
 
-#include <algorithm>
-#include <cmath>
-#include <vector>
-
-extern "C" {
-#include <micro_ros_utilities/string_utilities.h>
-#include <sensor_msgs/msg/joint_state.h>
-#include <pico/multicore.h>
-#include <pico/stdlib.h>
-#include <rcl/rcl.h>
-#include <rclc/executor.h>
 #include <rmw_microros/rmw_microros.h>
 
 #include "constants.h"
-}
 
-#include "pubsub.hpp"
-#include "quaternion.hpp"
+#include "pubsub/pubsub.hpp"
 #include "motor_manager.hpp"
-
-
-static bool _pub_jointstate_triggered;
 
 class PubJointState {
  public:
@@ -39,11 +23,7 @@ class PubJointState {
   void publish();
   void calculate();
 
-  ~PubJointState() {
-    // if (publisher_ != nullptr) {
-      rcl_publisher_fini(&publisher_, node_);
-    // }
-  }
+  ~PubJointState();
 
  private:
   rcl_node_t *node_;
@@ -61,10 +41,7 @@ class PubJointState {
   int16_t status_;
   bool data_ready_;
 
-  static bool trigger(repeating_timer_t *rt) {
-    _pub_jointstate_triggered = true;
-    return true;
-  }
+  static bool trigger(repeating_timer_t *rt);
 };
 
 #endif  // PUB_JOINTSTATE_HPP

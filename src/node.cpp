@@ -12,14 +12,6 @@ Node::Node() {
   // Initialize ROS
   allocator = rcl_get_default_allocator();
 
-  // Wait for agent successful ping for 2 minutes.
-  error_code = rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS);
-  RCCHECK(error_code);
-  if (error_code != RCL_RET_OK) {
-    return;
-  }
-  // TODO: if spin is called after this fails, return an error
-
   rclc_support_init(&support, 0, NULL, &allocator);
   rclc_node_init_default(&node, "deepdrive_micro", "", &support);
   // rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
@@ -35,8 +27,6 @@ Node::Node() {
   // Synchronize time with the agent
   rmw_uros_sync_session(5000);
 
-  motor_manager_ = new MotorManager();
-
   // TODO: Error handling for all the init functions
 
   // LED Ring to show status
@@ -48,13 +38,15 @@ Node::Node() {
 
   // Battery sensor & temperature sensor
   analog_sensors = new AnalogSensors();
-  init_battery();
+
+  motor_manager_ = new MotorManager();
 
   // IMU publisher
   pub_imu = new PubImu(&node, &support, &allocator);
   pub_joint_state = new PubJointState(&node, &support, &allocator, motor_manager_);
   pub_telemetry = new PubTelemetry(&node, &support, &allocator, motor_manager_);
   pub_odom = new PubOdom(&node, &support, &allocator, motor_manager_);
+  pub_battery_state = new PubBatteryState(&node, &support, &allocator, analog_sensors);
 
   sub_cmd_vel = new SubCmdVel(&node, &support, &allocator, &executor, motor_manager_);
 
@@ -76,17 +68,27 @@ void Node::spin() {
 #ifdef WATCHDOG_ENABLED
     watchdog_update();
 #endif
-
-    // rclc_executor_spin(&executor);
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
-
-    // TODO: Timer to monitor agent?
-    // RCCHECK(rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS));
   }
 }
 
 // TODO: Maybe put this in a destructor
 Node::~Node() {
   RCCHECK(rcl_node_fini(&node));
-  // Do I need to call delete on all of the subscriptions, publishers, etc?
+
+  // TODO: Make this memory handled better
+  cancel_repeating_timer(&timer_control);
+  cancel_repeating_timer(&timer_led_ring);
+
+  delete motor_manager_;
+  delete analog_sensors;
+
+  delete pub_imu;
+  delete pub_joint_state;
+  delete pub_telemetry;
+  delete pub_odom;
+  delete pub_battery_state;
+
+  delete sub_cmd_vel;
+
 }

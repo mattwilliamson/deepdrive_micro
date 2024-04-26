@@ -2,7 +2,6 @@
 #define IMU_HPP
 
 #include "config.h"
-#include "quaternion.hpp"
 
 // #include "ICM_20948.h"
 
@@ -150,7 +149,7 @@ class IMU {
    * @return A Quaternion object representing the estimated orientation of the
    * sensor.
    */
-  Quaternion getOrientation();
+  FusionQuaternion getOrientation();
 
   /**
    * @brief Retrieves a string representation of the sensor status.
@@ -185,7 +184,7 @@ class IMU {
   double temp_c_;       // Temperature reading in degrees Celsius.
 
   bool has_new_data_;       // Flag indicating whether new sensor data is available.
-  Quaternion orientation_;  // Estimated orientation of the sensor.
+  FusionQuaternion orientation_;  // Estimated orientation of the sensor.
 
   const FusionMatrix gyroscopeMisalignment = {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
   const FusionVector gyroscopeSensitivity = {1.0f, 1.0f, 1.0f};

@@ -25,6 +25,7 @@ int Node::start_control_loop() {
     return 1;
   }
 
+  // TODO: move this to separate class
   // Setup LED Ring animation loop timer
   if (!add_repeating_timer_us(-MICROSECONDS / LED_RING_HZ, trigger_led_ring, NULL, &timer_led_ring)) {
     // printf("Failed to add led ring timer\r\n");
@@ -38,9 +39,10 @@ int Node::start_control_loop() {
 // LED Ring and control loop
 void Node::spin_control_loop() {
   bool led_on = true;
+  static int core = get_core_num();
 
   while (true) {
-    core_start[1] = time_us_64();
+    pub_telemetry->set_core_start(core);
 
     // Control loop for motors
     if (control_due) {
@@ -49,15 +51,15 @@ void Node::spin_control_loop() {
       // Read any motor encoder pulses
       motor_manager_->update_motor_outputs();
 
+      // Publish any due messages
       pub_odom->calculate();
       pub_imu->calculate();
       pub_telemetry->calculate();
       pub_joint_state->calculate();
+      pub_battery_state->calculate();
 
       // TODO: Do other processing here to make publishing on core0 as fast as
       // possible e.g. calculate odometry, publish sensor data, etc.
-
-      core_elapsed[1] = time_us_64() - core_start[1];
     }
 
 #ifndef LED_RING_ENABLED
@@ -69,9 +71,10 @@ void Node::spin_control_loop() {
       led_on = !led_on;
       led_ring.renderStatus(status.get());
       led_status_set(led_on);
-      core_elapsed[1] = time_us_64() - core_start[1];
     }
 #endif
+
+    pub_telemetry->set_core_stop(core);
 
     // Sit tight until we have more work to do
     tight_loop_contents();

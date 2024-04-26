@@ -1,48 +1,11 @@
 #ifndef NODE_HPP
 #define NODE_HPP
 
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <string>
-#include <vector>
+
 
 extern "C" {
-// Error codes can be found in
-// micro_ros_raspberrypi_pico_sdk/libmicroros/include/rcl/types.h
-// and micro_ros_raspberrypi_pico_sdk/libmicroros/include/rmw/ret_types.h
-#include <control_msgs/msg/mecanum_drive_controller_state.h>
-#include <diagnostic_msgs/msg/diagnostic_array.h>
-#include <diagnostic_msgs/msg/diagnostic_status.h>
-#include <diagnostic_msgs/msg/key_value.h>
-#include <geometry_msgs/msg/point.h>
-#include <geometry_msgs/msg/twist.h>
-#include <micro_ros_utilities/string_utilities.h>
-#include <nav_msgs/msg/odometry.h>
-#include <rcl/error_handling.h>
-#include <rcl/rcl.h>
-#include <rclc/executor.h>
-#include <rclc_parameter/rclc_parameter.h>
-#include <rmw_microros/rmw_microros.h>
-#include <rosidl_runtime_c/primitives_sequence_functions.h>
-#include <rosidl_runtime_c/sequence_bound.h>
-#include <rosidl_runtime_c/string.h>
-#include <rosidl_runtime_c/string_functions.h>
-#include <sensor_msgs/msg/battery_state.h>
-#include <sensor_msgs/msg/imu.h>
-#include <sensor_msgs/msg/joint_state.h>
-#include <sensor_msgs/msg/magnetic_field.h>
-#include <std_msgs/msg/int32.h>
-
 #include "config.h"
-#include "hardware/i2c.h"
-#include "hardware/pwm.h"
-#include "hardware/watchdog.h"
 #include "led_status.h"
-#include "pico/multicore.h"
-#include "pico/stdlib.h"
-#include "pico/time.h"
 #include "pico_uart_transports.h"
 #include "constants.h"
 }
@@ -50,15 +13,14 @@ extern "C" {
 #include "analog_sensors.hpp"
 #include "led_ring.hpp"
 #include "motor.hpp"
-#include "quaternion.hpp"
 #include "status.hpp"
-#include "pubsub.hpp"
-#include "pub_odom.hpp"
-#include "pub_imu.hpp"
+#include "pubsub/pub_odom.hpp"
+#include "pubsub/pub_imu.hpp"
 #include "motor_manager.hpp"
-#include "pub_telemetry.hpp"
-#include "pub_joint_state.hpp"
-#include "sub_cmd_vel.hpp"
+#include "pubsub/pub_telemetry.hpp"
+#include "pubsub/pub_joint_state.hpp"
+#include "pubsub/pub_battery_state.hpp"
+#include "pubsub/sub_cmd_vel.hpp"
 
 /**
  * @class Node
@@ -85,25 +47,18 @@ class Node {
   rclc_executor_t executor;
   rcl_timer_t timer_main_loop;
   // rclc_parameter_server_t param_server;
-
-  rcl_publisher_t publisher_battery;
-  // rcl_publisher_t publisher_join_state;
-  // rcl_publisher_t publisher_mag;
-
+  
   PubOdom *pub_odom;
   PubImu *pub_imu;
   PubTelemetry *pub_telemetry;
   PubJointState *pub_joint_state;
+  PubBatteryState *pub_battery_state;
 
   SubCmdVel *sub_cmd_vel;
 
-  // control_msgs__msg__MecanumDriveControllerState mgs_out_motor_speed;  // TODO: Find the create function for this
-  sensor_msgs__msg__BatteryState msg_out_battery;                // TODO: Find the create function for this
-  
-
-
   LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
   StatusManager status;
+  AnalogSensors* analog_sensors;
 
   // TODO: Do I need to publish trajectory_msgs__msg__JointTrajectoryPoint ?
 
@@ -112,8 +67,6 @@ class Node {
 
   repeating_timer_t timer_control;
   repeating_timer_t timer_led_ring;
-
-  AnalogSensors* analog_sensors;
 
   void RCCHECK(rcl_ret_t error_code) {
     if (error_code != RCL_RET_OK) {
@@ -169,18 +122,6 @@ class Node {
   //                           const Parameter* new_param, void* context);
   // bool isDoubleNamed(const Parameter* new_param, const char* name);
 
-
-  // Motor Publisher
-  void init_motor_pub();
-  void publish_motor();
-
-  // Diagnostic publisher
-  int init_diagnostic();
-  void publish_diagnostic();
-
-  // Battery publisher
-  int init_battery();
-  void publish_battery();
 
   // TODO: Maybe put this in a destructor
   ~Node();

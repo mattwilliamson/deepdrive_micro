@@ -115,7 +115,10 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Mutexes don't work across cores. Use FIFO to tell core0 which step core1 is on: https://github.com/raspberrypi/pico-examples/blob/master/multicore/multicore_fifo_irqs/multicore_fifo_irqs.c
 - Watchdog for restarts
+- Add status for each publisher to diagnostic
+- Fix up error handling throughout and status manager
 - IMU SPI?
 - Average IMU Readings
 - Timeout if no twist received for some period of time and stop motors

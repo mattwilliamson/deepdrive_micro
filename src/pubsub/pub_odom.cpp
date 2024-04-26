@@ -1,4 +1,22 @@
-#include "pub_odom.hpp"
+#include "pubsub/pub_odom.hpp"
+
+static bool _pub_odom_triggered;
+
+bool PubOdom::trigger(repeating_timer_t *rt) {
+    _pub_odom_triggered = true;
+    return true;
+  }
+
+const FusionQuaternion PubOdom::quaternion_from_yaw(const Radians yaw) {
+  const FusionQuaternion q = {.element = {
+                                  .w = cosf(0.5f * yaw),
+                                  .x = 0.0f,
+                                  .y = 0.0f,
+                                  .z = -1.0f * sinf(0.5f * yaw),
+                              }};
+
+  return FusionQuaternionNormalise(q);
+}
 
 PubOdom::PubOdom(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
                  MotorManager *motor_manager,
@@ -42,7 +60,7 @@ PubOdom::PubOdom(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *all
   msg_->twist.twist.angular.x = 0;
   msg_->twist.twist.angular.y = 0;
   msg_->twist.twist.angular.z = 0;
-  
+
   status_ = rclc_publisher_init_default(
       &publisher_, node_,
       ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
@@ -63,9 +81,6 @@ void PubOdom::calculate() {
   }
 
   mutex_enter_blocking(&lock_);
-  // TODO: Flag that the data has been processed
-
-  // Do this on core1 to free up cycle time on core0
 
   auto motors = motor_manager_->get_motors();
 
@@ -105,14 +120,11 @@ void PubOdom::calculate() {
   yaw_ = ceil_radians(yaw_);
 
   // Update the orientation quaternion and normalize it
-  // TODO: Function for this
-  Quaternion q = Quaternion(0.0, 0.0, yaw_);
-  q.normalize();
-
-  msg_->pose.pose.orientation.x = q.x;
-  msg_->pose.pose.orientation.y = q.y;
-  msg_->pose.pose.orientation.z = q.z;
-  msg_->pose.pose.orientation.w = q.w;
+  FusionQuaternion q = quaternion_from_yaw(yaw_);
+  msg_->pose.pose.orientation.x = q.element.x;
+  msg_->pose.pose.orientation.y = q.element.y;
+  msg_->pose.pose.orientation.z = q.element.z;
+  msg_->pose.pose.orientation.w = q.element.w;
 
   // Update the velocity linear in m/s and angular rad/s from meters/loop and radians/loop
   msg_->twist.twist.linear.x = (double)delta_x * CONTROL_LOOP_HZ / MICRO_METERS;
@@ -134,4 +146,9 @@ void PubOdom::publish() {
     data_ready_ = false;
   }
   mutex_exit(&lock_);
+}
+
+PubOdom::~PubOdom() {
+  cancel_repeating_timer(&timer_);
+  status_ = rcl_publisher_fini(&publisher_, node_);
 }

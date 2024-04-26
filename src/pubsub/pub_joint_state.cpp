@@ -1,10 +1,17 @@
-#include "pub_joint_state.hpp"
+#include "pubsub/pub_joint_state.hpp"
+
+static bool _pub_jointstate_triggered;
+
+bool PubJointState::trigger(repeating_timer_t *rt) {
+  _pub_jointstate_triggered = true;
+  return true;
+}
 
 PubJointState::PubJointState(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
-              MotorManager *motor_manager,
-               int64_t timer_hz,
-               const char *topic_name,
-               const char *frame_id) {
+                             MotorManager *motor_manager,
+                             int64_t timer_hz,
+                             const char *topic_name,
+                             const char *frame_id) {
   node_ = node;
   allocator_ = allocator;
   support_ = support;
@@ -13,7 +20,7 @@ PubJointState::PubJointState(rcl_node_t *node, rclc_support_t *support, rcl_allo
   motor_manager_ = motor_manager;
 
   msg_->name = *rosidl_runtime_c__String__Sequence__create(MOTOR_COUNT);
-  rosidl_runtime_c__float64__Sequence__init(&msg_->position,  MOTOR_COUNT);
+  rosidl_runtime_c__float64__Sequence__init(&msg_->position, MOTOR_COUNT);
   rosidl_runtime_c__float64__Sequence__init(&msg_->velocity, MOTOR_COUNT);
   rosidl_runtime_c__float64__Sequence__init(&msg_->effort, MOTOR_COUNT);
 
@@ -21,7 +28,6 @@ PubJointState::PubJointState(rcl_node_t *node, rclc_support_t *support, rcl_allo
   msg_->name.data[IDX_MOTOR_BACK_LEFT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_LEFT);
   msg_->name.data[IDX_MOTOR_FRONT_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_FRONT_RIGHT);
   msg_->name.data[IDX_MOTOR_BACK_RIGHT] = micro_ros_string_utilities_init(MOTOR_JOIN_BACK_RIGHT);
-
 
   mutex_init(&lock_);
 
@@ -46,7 +52,7 @@ void PubJointState::calculate() {
   mutex_enter_blocking(&lock_);
 
   auto motors = motor_manager_->get_motors();
-  
+
   for (int i = 0; i < MOTOR_COUNT; i++) {
     msg_->position.data[i] = motors[i]->getPosition();
     msg_->velocity.data[i] = motors[i]->getSpeedRadians();
@@ -69,4 +75,9 @@ void PubJointState::publish() {
     data_ready_ = false;
   }
   mutex_exit(&lock_);
+}
+
+PubJointState::~PubJointState() {
+  cancel_repeating_timer(&timer_);
+  status_ = rcl_publisher_fini(&publisher_, node_);
 }

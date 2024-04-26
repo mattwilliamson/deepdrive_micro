@@ -1,27 +1,8 @@
 #ifndef SUB_CMD_VEL_HPP
 #define SUB_CMD_VEL_HPP
 
-#include <algorithm>
-#include <cmath>
-#include <vector>
-#include <functional>
-
-extern "C" {
-#include <micro_ros_utilities/string_utilities.h>
-#include <pico/multicore.h>
-#include <pico/stdlib.h>
-#include <rcl/rcl.h>
-#include <rclc/executor.h>
-#include <rmw_microros/rmw_microros.h>
-#include <sensor_msgs/msg/joint_state.h>
-#include <geometry_msgs/msg/twist.h>
-
-#include "constants.h"
-}
-
 #include "motor_manager.hpp"
-#include "pubsub.hpp"
-#include "quaternion.hpp"
+#include "pubsub/pubsub.hpp"
 
 class SubCmdVel {
  public:

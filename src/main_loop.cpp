@@ -23,29 +23,15 @@ int Node::start_main_loop() {
 
 void Node::spin_main_loop(rcl_timer_t *timer, int64_t last_call_time) {
   // TODO: Do some calculations in the other core and publish in this one
-  core_start[0] = time_us_64();
+  static int core = get_core_num();
 
-  // if (RMW_RET_OK != rmw_uros_ping_agent(100, 1)) {
-  //   // Lost connection to agent. Stop motors.
-  //   for(auto &motor : motors) {
-  //     motor->setSpeed(0);
-  //   }
-  //   StatusManager::getInstance().set(Status::Error);
-  //   printf("micro-ROS agent has stopped. Exiting...\r\n");
-  //   sleep_ms(1000);
-  //   exit(1);
-  // } else {
-  //   printf("Agent is still up!\r\n\r\n");
-  // }
-
-  // TODO: Move some of these to config
-
-  publish_battery();
+  pub_telemetry->set_core_start(core);
 
   pub_odom->publish();
   pub_imu->publish();
   pub_telemetry->publish();
   pub_joint_state->publish();
+  pub_battery_state->publish();
 
-  core_elapsed[0] = time_us_64() - core_start[0];
+  pub_telemetry->set_core_stop(core);
 }

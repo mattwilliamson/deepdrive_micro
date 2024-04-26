@@ -362,8 +362,7 @@ ImuErrorCode IMU::read() {
   // Update gyroscope AHRS algorithm
   FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, deltaTime);
 
-  FusionQuaternion fo = FusionAhrsGetQuaternion(&ahrs);
-  orientation_ = Quaternion{fo.element.w, fo.element.x, fo.element.y, fo.element.z};
+  orientation_ = FusionAhrsGetQuaternion(&ahrs);
 
   // Returns the linear acceleration measurement with the 1 g of gravity removed.
   FusionVector accel = FusionAhrsGetLinearAcceleration(&ahrs);
@@ -390,6 +389,6 @@ Vector3 IMU::getMag() {
   return {mag_ut_[0], mag_ut_[1], mag_ut_[2]};
 }
 
-Quaternion IMU::getOrientation() {
+FusionQuaternion IMU::getOrientation() {
   return orientation_;
 }

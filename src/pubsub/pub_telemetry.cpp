@@ -1,4 +1,24 @@
-#include "pub_telemetry.hpp"
+#include "pubsub/pub_telemetry.hpp"
+
+static bool _pub_telemetry_triggered;
+
+bool PubTelemetry::trigger(repeating_timer_t *rt) {
+  _pub_telemetry_triggered = true;
+  return true;
+}
+
+void PubTelemetry::set_core_start(int core) {
+  core_start_[core] = time_us_64();
+}
+
+uint64_t PubTelemetry::set_core_stop(int core) {
+  core_elapsed_[core] = time_us_64() - core_start_[core];
+  return get_core_elapsed(core);
+}
+
+uint64_t PubTelemetry::get_core_elapsed(int core) {
+  return core_elapsed_[core];
+}
 
 PubTelemetry::PubTelemetry(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
                            MotorManager *motor_manager,
@@ -25,14 +45,24 @@ PubTelemetry::PubTelemetry(rcl_node_t *node, rclc_support_t *support, rcl_alloca
   msg_->status.data[0].hardware_id = micro_ros_string_utilities_init("deepdrive_micro");
   msg_->status.data[0].name = micro_ros_string_utilities_init("DeepDrive Status");
 
-  diagnostic_msgs__msg__KeyValue__Sequence__init(
-      &msg_->status.data[0].values, 2);
+  diagnostic_msgs__msg__KeyValue__Sequence__init(&msg_->status.data[0].values, 3);
 
-  msg_->status.data[0].values.data[Diagnostics::CORE_0].key =
-      micro_ros_string_utilities_init("Core 0 Loop Time (us)");
+#define DIAG msg_->status.data[0].values.data
 
-  msg_->status.data[0].values.data[Diagnostics::CORE_1].key =
-      micro_ros_string_utilities_init("Core 1 Loop Time (us)");
+  DIAG[Diagnostics::IMU].key = micro_ros_string_utilities_init("IMU Status");
+
+  DIAG[Diagnostics::CORE_0].key = micro_ros_string_utilities_init("Core 0 Loop Time (us)");
+
+  DIAG[Diagnostics::CORE_1].key = micro_ros_string_utilities_init("Core 1 Loop Time (us)");
+
+  // Preallocate these strings
+  DIAG[Diagnostics::CORE_0].value = micro_ros_string_utilities_init("9999999999");
+
+  DIAG[Diagnostics::CORE_1].value = micro_ros_string_utilities_init("9999999999");
+
+  msg_->status.data[0].message = micro_ros_string_utilities_init("SUPERCALIFRAGILISTICEXPIALIDOCIOUS");
+
+#undef DIAG
 
   if (!add_repeating_timer_us(-MICROSECONDS / timer_hz, PubTelemetry::trigger, NULL, &timer_)) {
     // printf("Failed to add control loop timer\r\n");
@@ -47,12 +77,13 @@ void PubTelemetry::calculate() {
 
   mutex_enter_blocking(&lock_);
 
-//   auto motors = motor_manager_->get_motors();
+  //   auto motors = motor_manager_->get_motors();
 
-  const int timeout_ms = 1000;
-  const int attempts = 1;
+  // this ping is taking too long
+  // const int timeout_ms = 1000;
+  // const int attempts = 1;
 
-  rmw_ret_t error_code = rmw_uros_ping_agent(timeout_ms, attempts);
+  // rmw_ret_t error_code = rmw_uros_ping_agent(timeout_ms, attempts);
 
   // TODO: Probably want to check other criteria when disabling motors
   // TODO: Check if two motors on the same side have similar speeds
@@ -62,19 +93,17 @@ void PubTelemetry::calculate() {
   //   StatusManager::getInstance().set(Status::Error);
   //   motor_manager_->disable_motors();
   // } else {
-    // StatusManager::getInstance().set(Status::Error);
-    motor_manager_->enable_motors();
+  // StatusManager::getInstance().set(Status::Error);
+  motor_manager_->enable_motors();
   // }
 
   // Convert core_elapsed[0] to string
-  std::string core_elapsed_0_str = std::to_string(core_elapsed[0]);
-  msg_->status.data[0].values.data[Diagnostics::CORE_0].value.data =
-      const_cast<char *>(core_elapsed_0_str.c_str());
+  
+  // msg_->status.data[0].values.data[Diagnostics::CORE_0].value.data = 
+  //   const_cast<char*>(std::to_string(core_elapsed_[0]).c_str());
+    itoa(core_elapsed_[0], msg_->status.data[0].values.data[Diagnostics::CORE_0].value.data, 10);
 
-  // Convert core_elapsed[1] to string
-  std::string core_elapsed_1_str = std::to_string(core_elapsed[1]);
-  msg_->status.data[0].values.data[Diagnostics::CORE_1].value.data =
-      const_cast<char *>(core_elapsed_1_str.c_str());
+  itoa(core_elapsed_[1], msg_->status.data[0].values.data[Diagnostics::CORE_1].value.data, 10);
 
   // IMU Status
   //   const char *imuStatus = imu.statusString();
@@ -83,7 +112,7 @@ void PubTelemetry::calculate() {
 
   // TODO: set error string from status
   msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
-  msg_->status.data[0].message = micro_ros_string_utilities_init("OK");
+  msg_->status.data[0].message.data = const_cast<char*>("OK");
 
   // TODO: Set status string
   switch (StatusManager::getInstance().get()) {
@@ -98,7 +127,7 @@ void PubTelemetry::calculate() {
       break;
     case Status::Error:
       msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
-      msg_->status.data[0].message = micro_ros_string_utilities_init("Error");
+      msg_->status.data[0].message.data = const_cast<char*>("Error");
       break;
     case Status::Rebooted:
       msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
@@ -107,7 +136,7 @@ void PubTelemetry::calculate() {
 
   // TODO: Send Status
   if (!rmw_uros_epoch_synchronized()) {
-    msg_->status.data[0].message = micro_ros_string_utilities_init("Time not synchronized");
+    msg_->status.data[0].message.data = const_cast<char*>("Time not synchronized");
   }
 
   // Set timestamp
@@ -127,4 +156,9 @@ void PubTelemetry::publish() {
   }
 
   mutex_exit(&lock_);
+}
+
+PubTelemetry::~PubTelemetry() {
+  cancel_repeating_timer(&timer_);
+  status_ = rcl_publisher_fini(&publisher_, node_);
 }

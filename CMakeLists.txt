@@ -6,6 +6,9 @@ project(deepdrive_micro C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
+# RP2040 repeating timer heap min=0, max=255, default=16
+add_compile_definitions(PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERS=32)
+
 pico_sdk_init()
 
 file(GLOB_RECURSE fusion_files "lib/Fusion/*.c")
@@ -17,7 +20,6 @@ include_directories(
     lib/pico-icm20948
     lib/Fusion
 )
-
 
 link_directories(lib/libmicroros)
 
@@ -43,19 +45,18 @@ add_executable(deepdrive_micro
     src/pid.cpp
     src/analog_sensors.cpp
     src/watchdog.cpp
-    src/quaternion.cpp
     
-    src/pubsub.cpp
+    src/pubsub/pubsub.cpp
 
     # Subscribers
-    src/sub_cmd_vel.cpp
+    src/pubsub/sub_cmd_vel.cpp
 
     # Publishers
-    src/pub_odom.cpp
-    src/pub_telemetry.cpp
-    src/pub_battery.cpp
-    src/pub_imu.cpp
-    src/pub_joint_state.cpp
+    src/pubsub/pub_odom.cpp
+    src/pubsub/pub_telemetry.cpp
+    src/pubsub/pub_battery_state.cpp
+    src/pubsub/pub_imu.cpp
+    src/pubsub/pub_joint_state.cpp
 
     # IMU
     # lib/SparkFun_ICM-20948_ArduinoLibrary/src/util/ICM_20948_C.c

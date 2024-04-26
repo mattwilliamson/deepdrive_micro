@@ -26,9 +26,9 @@ extern "C" {
 #include <sensor_msgs/msg/battery_state.h>
 #include <sensor_msgs/msg/imu.h>
 #include <sensor_msgs/msg/joint_state.h>
-#include <sensor_msgs/msg/magnetic_field.h>
-#include <std_msgs/msg/int32.h>
 }
+
+#include "config.h"
 
 class PubSub {
  public:

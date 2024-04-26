@@ -1,26 +1,12 @@
 #ifndef PUB_ODOM_HPP
 #define PUB_ODOM_HPP
 
-#include <algorithm>
-#include <cmath>
-#include <vector>
-
-extern "C" {
-#include <micro_ros_utilities/string_utilities.h>
-#include <nav_msgs/msg/odometry.h>
-#include <pico/multicore.h>
-#include <pico/stdlib.h>
-#include <rcl/rcl.h>
-#include <rclc/executor.h>
-#include <rmw_microros/rmw_microros.h>
-
 #include "constants.h"
-}
 
+#include "Fusion.h"
 #include "motor.hpp"
 #include "motor_manager.hpp"
-#include "pubsub.hpp"
-#include "quaternion.hpp"
+#include "pubsub/pubsub.hpp"
 
 static double ceil_radians(double rad) {
   if (rad > M_PI) {
@@ -31,8 +17,6 @@ static double ceil_radians(double rad) {
     return rad;
   }
 }
-
-static bool _pub_odom_triggered;
 
 class PubOdom {
  public:
@@ -50,11 +34,9 @@ class PubOdom {
   void publish();
   void calculate();
 
-  ~PubOdom() {
-    // if (publisher_ != nullptr) {
-      rcl_publisher_fini(&publisher_, node_);
-    // }
-  }
+  static const FusionQuaternion quaternion_from_yaw(const Radians yaw);
+
+  ~PubOdom();
 
  private:
   rcl_node_t *node_;
@@ -76,10 +58,7 @@ class PubOdom {
   int16_t status_;
   bool data_ready_;
 
-  static bool trigger(repeating_timer_t *rt) {
-    _pub_odom_triggered = true;
-    return true;
-  }
+  static bool trigger(repeating_timer_t *rt);
 };
 
 #endif  // PUB_ODOM_HPP

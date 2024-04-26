@@ -4,8 +4,14 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "config.h"
+extern "C" {
+#include "pico/multicore.h"
+#include "pico/stdlib.h"
 #include "hardware/adc.h"
+}
+
+#include "config.h"
+
 
 /**
  * @brief Class representing analog sensors.
@@ -13,7 +19,9 @@
 class AnalogSensors {
  private:
   // How many samples to take and average for the analog sensors
-  static const int NUM_SAMPLES = 5;
+  static const int NUM_SAMPLES = 10;
+
+  mutex_t lock_;
 
  public:
   /**

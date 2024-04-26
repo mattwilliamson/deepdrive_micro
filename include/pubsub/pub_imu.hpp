@@ -1,27 +1,9 @@
 #ifndef PUB_IMU_HPP
 #define PUB_IMU_HPP
 
-#include <algorithm>
-#include <cmath>
-#include <vector>
-
-extern "C" {
-#include <micro_ros_utilities/string_utilities.h>
-#include <pico/multicore.h>
-#include <pico/stdlib.h>
-#include <rcl/rcl.h>
-#include <rclc/executor.h>
-#include <rmw_microros/rmw_microros.h>
-#include <sensor_msgs/msg/imu.h>
-
-#include "constants.h"
-}
-
 #include "imu.hpp"
-#include "pubsub.hpp"
-#include "quaternion.hpp"
-
-static bool _pub_imu_triggered;
+#include "pubsub/pubsub.hpp"
+#include "constants.h"
 
 class PubImu {
  public:
@@ -38,12 +20,7 @@ class PubImu {
   void calculate();
 
   PubImu &operator=(const PubImu &) = default;
-
-  ~PubImu() {
-    // if (publisher_ != nullptr) {
-    status_ = rcl_publisher_fini(&publisher_, node_);
-    // }
-  }
+  ~PubImu();
 
  private:
   rcl_node_t *node_;
@@ -61,10 +38,7 @@ class PubImu {
   int16_t status_;
   bool data_ready_;
 
-  static bool trigger(repeating_timer_t *rt) {
-    _pub_imu_triggered = true;
-    return true;
-  }
+  static bool trigger(repeating_timer_t *rt);
 };
 
 #endif  // PUB_IMU_HPP
