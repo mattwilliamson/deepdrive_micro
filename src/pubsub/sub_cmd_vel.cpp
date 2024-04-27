@@ -55,8 +55,8 @@ void SubCmdVel::callback(const geometry_msgs__msg__Twist *msg) {
   // Commanded linear velocity for each motor side in m/s
   // double left = (x - (cos(z) * wheel_separation / 2.0));
   // double right = (x + (sin(z) * wheel_separation / 2.0));
-  double left = x + (wheel_separation * z);
-  double right = x - (wheel_separation * z);
+  double left = x - (wheel_separation * z);
+  double right = x + (wheel_separation * z);
 
   auto motors = motor_manager_->get_motors();
 

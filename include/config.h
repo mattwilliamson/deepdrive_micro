@@ -136,11 +136,13 @@ static const int MILLI_METERS = 1e3;
 // #define PID_KD 0.2
 
 // Proportional
-#define PID_KP (0.025 * CONTROL_LOOP_HZ)
+#define PID_KP (0.02 * CONTROL_LOOP_HZ)
+// #define PID_KP (0.025 * CONTROL_LOOP_HZ)
 // #define PID_KP 0.019 * CONTROL_LOOP_HZ
 
 // Integral
-#define PID_KI (0.0015 * CONTROL_LOOP_HZ)
+#define PID_KI (0.001 * CONTROL_LOOP_HZ)
+// #define PID_KI (0.0015 * CONTROL_LOOP_HZ)
 // #define PID_KI (0.002 * CONTROL_LOOP_HZ)
 
 // Derivative
@@ -186,6 +188,7 @@ static const int MILLI_METERS = 1e3;
 #define IMU_ADDRESS_MAG 0x0C
 
 #define IMU_FRAME "imu_link"
+#define BATTERY_FRAME "base_link"
 
 // END IMU
 // ----------------------------------

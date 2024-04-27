@@ -38,10 +38,7 @@ PubJointState::PubJointState(rcl_node_t *node, rclc_support_t *support, rcl_allo
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, JointState),
       topic_name);
 
-  if (!add_repeating_timer_us(-MICROSECONDS / timer_hz, PubJointState::trigger, NULL, &timer_)) {
-    // printf("Failed to add control loop timer\r\n");
-    status_ = -1;
-  }
+  assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubJointState::trigger, NULL, &timer_));
 }
 
 void PubJointState::calculate() {

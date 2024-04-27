@@ -6,11 +6,18 @@
 #include "pubsub/pubsub.hpp"
 #include "status.hpp"
 
-namespace Diagnostics {
+extern "C" {
+  #include "memory_usage.h"
+}
+
+namespace Diag {
 const int IMU = 0;
 const int CORE_0 = 1;
 const int CORE_1 = 2;
-}  // namespace Diagnostics
+const int MEM_FREE = 3;
+const int MEM_USED = 4;
+const int TOTAL = 5;
+}  // namespace Diag
 
 /**
  * @class PubTelemetry

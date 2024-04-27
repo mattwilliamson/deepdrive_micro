@@ -69,10 +69,7 @@ PubOdom::PubOdom(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *all
   msg_->header.frame_id = micro_ros_string_utilities_init(frame_id);
   msg_->child_frame_id = micro_ros_string_utilities_init(child_frame_id);
 
-  if (!add_repeating_timer_us(-MICROSECONDS / timer_hz, PubOdom::trigger, NULL, &timer_)) {
-    // printf("Failed to add control loop timer\r\n");
-    status_ = -1;
-  }
+  assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubOdom::trigger, NULL, &timer_));
 }
 
 void PubOdom::calculate() {

@@ -36,10 +36,7 @@ PubImu::PubImu(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *alloc
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
       topic_name);
 
-  if (!add_repeating_timer_us(-MICROSECONDS / timer_hz, PubImu::trigger, NULL, &timer_)) {
-    // printf("Failed to add control loop timer\r\n");
-    status_ = -1;
-  }
+  assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubImu::trigger, NULL, &timer_));
 }
 
 void PubImu::calculate() {

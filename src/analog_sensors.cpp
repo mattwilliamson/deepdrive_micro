@@ -19,13 +19,11 @@ float AnalogSensors::getBatteryVoltage() {
 
   adc_select_input(PIN_BATTERY_VOLTAGE_INPUT);
   double sum = 0.0;
-  for (int i = 0; i < NUM_SAMPLES;
-       i++) {  // Use the class constant for the loop condition
+  for (int i = 0; i < NUM_SAMPLES; i++) {
     uint16_t rawValue = adc_read();
     sum += rawValue;
   }
-  double average_adc = sum / NUM_SAMPLES;  // Use the class constant for
-                                           // calculating the average voltage
+  double average_adc = sum / NUM_SAMPLES;
   const float conversion_factor = BATTERY_VOLTAGE_REFERENCE / (1 << 12);
   float volts = conversion_factor * average_adc;
   // ADC raw value = 2356, multimeter raw value = 11.08

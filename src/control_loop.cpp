@@ -20,17 +20,11 @@ int Node::start_control_loop() {
   multicore_launch_core1(spin_control_loop_callback);
 
   // Setup control loop timer
-  if (!add_repeating_timer_us(-MICROSECONDS / CONTROL_LOOP_HZ, trigger_control, NULL, &timer_control)) {
-    // printf("Failed to add control loop timer\r\n");
-    return 1;
-  }
+  assert(add_repeating_timer_us(-MICROSECONDS / CONTROL_LOOP_HZ, trigger_control, NULL, &timer_control));
 
   // TODO: move this to separate class
   // Setup LED Ring animation loop timer
-  if (!add_repeating_timer_us(-MICROSECONDS / LED_RING_HZ, trigger_led_ring, NULL, &timer_led_ring)) {
-    // printf("Failed to add led ring timer\r\n");
-    return 1;
-  }
+  assert(add_repeating_timer_us(-MICROSECONDS / LED_RING_HZ, trigger_led_ring, NULL, &timer_led_ring));
 
   return 0;
 }

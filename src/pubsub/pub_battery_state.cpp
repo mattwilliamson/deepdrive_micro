@@ -10,15 +10,17 @@ bool PubBatteryState::trigger(repeating_timer_t *rt) {
 PubBatteryState::PubBatteryState(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
                                  AnalogSensors *analog_sensors,
                                  int64_t timer_hz,
-                                 const char *topic_name) {
+                                 const char *topic_name,
+                                 const char *frame_id) {
   node_ = node;
   allocator_ = allocator;
   support_ = support;
   analog_sensors_ = analog_sensors;
   msg_ = sensor_msgs__msg__BatteryState__create();
 
-  msg_->location = micro_ros_string_utilities_init("base_link");
-  msg_->serial_number = micro_ros_string_utilities_init("1234567890");
+  msg_->header.frame_id = micro_ros_string_utilities_init(frame_id);
+  msg_->location = micro_ros_string_utilities_init("bottom");
+  msg_->serial_number = micro_ros_string_utilities_init("DEADBEEF");
   msg_->design_capacity = BATTERY_CAPACITY;
   msg_->power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
 
@@ -31,10 +33,7 @@ PubBatteryState::PubBatteryState(rcl_node_t *node, rclc_support_t *support, rcl_
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState),
       topic_name);
 
-  if (!add_repeating_timer_us(-MICROSECONDS / timer_hz, PubBatteryState::trigger, NULL, &timer_)) {
-    printf("Failed to add control loop timer\r\n");
-    status_ = -1;
-  }
+  assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubBatteryState::trigger, NULL, &timer_));
 }
 
 

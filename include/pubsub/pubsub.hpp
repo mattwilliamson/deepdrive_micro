@@ -30,19 +30,35 @@ extern "C" {
 
 #include "config.h"
 
+/**
+ * @class PubSub
+ * @brief A class that provides functionality for publishing and subscribing to messages.
+ */
 class PubSub {
  public:
+  /**
+   * @brief Sets the timestamp header of a message to the current time.
+   * @param header A pointer to the message header.
+   */
   static void set_timestamp_header(std_msgs__msg__Header *header) {
     int64_t t = rmw_uros_epoch_nanos();
     header->stamp.sec = RCUTILS_NS_TO_S(t);
     header->stamp.nanosec = t % 1000000000;
   }
 
+  /**
+   * @brief Constructs a PubSub object.
+   * @param node A pointer to the ROS node.
+   * @param allocator A pointer to the allocator.
+   */
   PubSub(rcl_node_t *node, rcl_allocator_t *allocator) {
     node_ = node;
     allocator_ = allocator;
   }
 
+  /**
+   * @brief Destroys the PubSub object.
+   */
   ~PubSub() {
     if (publisher_ != nullptr) {
       rcl_publisher_fini(publisher_, node_);
@@ -50,13 +66,13 @@ class PubSub {
   }
 
  private:
-  rcl_node_t *node_;
-  rcl_allocator_t *allocator_;
-  rclc_support_t *support_;
-  rclc_executor_t *executor_;
-  rcl_publisher_t *publisher_;
-  mutex_t lock_;
-  repeating_timer_t timer_;
+  rcl_node_t *node_;  ///< A pointer to the ROS node.
+  rcl_allocator_t *allocator_;  ///< A pointer to the allocator.
+  rclc_support_t *support_;  ///< A pointer to the RCLC support structure.
+  rclc_executor_t *executor_;  ///< A pointer to the RCLC executor structure.
+  rcl_publisher_t *publisher_;  ///< A pointer to the ROS publisher.
+  mutex_t lock_;  ///< A mutex for thread safety.
+  repeating_timer_t timer_;  ///< A repeating timer for periodic tasks.
 };
 
 #endif  // PUBSUB_HPP

@@ -41,33 +41,32 @@ PubTelemetry::PubTelemetry(rcl_node_t *node, rclc_support_t *support, rcl_alloca
 
   msg_->header.frame_id = micro_ros_string_utilities_init(DIAGNOSTIC_FRAME);
   diagnostic_msgs__msg__DiagnosticStatus__Sequence__init(&msg_->status, 1);
+  diagnostic_msgs__msg__KeyValue__Sequence__init(&msg_->status.data[0].values, Diag::TOTAL);
 
-  msg_->status.data[0].hardware_id = micro_ros_string_utilities_init("deepdrive_micro");
-  msg_->status.data[0].name = micro_ros_string_utilities_init("DeepDrive Status");
+  diagnostic_msgs__msg__DiagnosticStatus *diag = &msg_->status.data[0];
 
-  diagnostic_msgs__msg__KeyValue__Sequence__init(&msg_->status.data[0].values, 3);
+  diag->hardware_id = micro_ros_string_utilities_init("deepdrive_micro");
+  diag->name = micro_ros_string_utilities_init("DeepDrive Status");
+  diag->message = micro_ros_string_utilities_init("SUPERCALIFRAGILISTICEXPIALIDOCIOUS");
 
-#define DIAG msg_->status.data[0].values.data
-
-  DIAG[Diagnostics::IMU].key = micro_ros_string_utilities_init("IMU Status");
-
-  DIAG[Diagnostics::CORE_0].key = micro_ros_string_utilities_init("Core 0 Loop Time (us)");
-
-  DIAG[Diagnostics::CORE_1].key = micro_ros_string_utilities_init("Core 1 Loop Time (us)");
+  diag->values.data[Diag::IMU].key = micro_ros_string_utilities_init("IMU Status");
 
   // Preallocate these strings
-  DIAG[Diagnostics::CORE_0].value = micro_ros_string_utilities_init("9999999999");
+  diag->values.data[Diag::CORE_0].key = micro_ros_string_utilities_init("Core 0 Loop Time (us)");
+  diag->values.data[Diag::CORE_0].value = micro_ros_string_utilities_init("9999999999");
 
-  DIAG[Diagnostics::CORE_1].value = micro_ros_string_utilities_init("9999999999");
+  diag->values.data[Diag::CORE_1].key = micro_ros_string_utilities_init("Core 1 Loop Time (us)");
+  diag->values.data[Diag::CORE_1].value = micro_ros_string_utilities_init("9999999999");
 
-  msg_->status.data[0].message = micro_ros_string_utilities_init("SUPERCALIFRAGILISTICEXPIALIDOCIOUS");
+  diag->values.data[Diag::MEM_FREE].key = micro_ros_string_utilities_init("Memory Free (bytes)");
+  diag->values.data[Diag::MEM_FREE].value = micro_ros_string_utilities_init("9999999999");
 
-#undef DIAG
+  diag->values.data[Diag::MEM_USED].key = micro_ros_string_utilities_init("Memory Used (bytes)");
+  diag->values.data[Diag::MEM_USED].value = micro_ros_string_utilities_init("9999999999");
 
-  if (!add_repeating_timer_us(-MICROSECONDS / timer_hz, PubTelemetry::trigger, NULL, &timer_)) {
-    // printf("Failed to add control loop timer\r\n");
-    status_ = -1;
-  }
+
+
+  assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubTelemetry::trigger, NULL, &timer_));
 }
 
 void PubTelemetry::calculate() {
@@ -97,46 +96,42 @@ void PubTelemetry::calculate() {
   motor_manager_->enable_motors();
   // }
 
-  // Convert core_elapsed[0] to string
-  
-  // msg_->status.data[0].values.data[Diagnostics::CORE_0].value.data = 
-  //   const_cast<char*>(std::to_string(core_elapsed_[0]).c_str());
-    itoa(core_elapsed_[0], msg_->status.data[0].values.data[Diagnostics::CORE_0].value.data, 10);
+  diagnostic_msgs__msg__DiagnosticStatus *diag = &msg_->status.data[0];
 
-  itoa(core_elapsed_[1], msg_->status.data[0].values.data[Diagnostics::CORE_1].value.data, 10);
+  itoa(core_elapsed_[0], diag->values.data[Diag::CORE_0].value.data, 10);
+  itoa(core_elapsed_[1], diag->values.data[Diag::CORE_1].value.data, 10);
 
-  // IMU Status
-  //   const char *imuStatus = imu.statusString();
-  //   msg_->status.data[0].values.data[Diagnostics::IMU].value.data =
-  //       const_cast<char*>(imuStatus);
+  itoa(get_free_heap(), diag->values.data[Diag::MEM_FREE].value.data, 10);
+  itoa(get_used_heap(), diag->values.data[Diag::MEM_USED].value.data, 10);
 
   // TODO: set error string from status
-  msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
-  msg_->status.data[0].message.data = const_cast<char*>("OK");
+  diag->level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+  diag->message.data = const_cast<char *>("OK");
 
   // TODO: Set status string
   switch (StatusManager::getInstance().get()) {
     case Status::Connecting:
-      msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__WARN;
+      diag->level = diagnostic_msgs__msg__DiagnosticStatus__WARN;
       break;
     case Status::Connected:
-      msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+      diag->level = diagnostic_msgs__msg__DiagnosticStatus__OK;
       break;
     case Status::Active:
-      msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__OK;
+      diag->level = diagnostic_msgs__msg__DiagnosticStatus__OK;
       break;
     case Status::Error:
-      msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
-      msg_->status.data[0].message.data = const_cast<char*>("Error");
+      diag->level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
+      diag->message.data = const_cast<char *>("Error");
       break;
     case Status::Rebooted:
-      msg_->status.data[0].level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
+      diag->level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
       break;
   }
 
+
   // TODO: Send Status
   if (!rmw_uros_epoch_synchronized()) {
-    msg_->status.data[0].message.data = const_cast<char*>("Time not synchronized");
+    diag->message.data = const_cast<char *>("Time not synchronized");
   }
 
   // Set timestamp

@@ -59,7 +59,7 @@ sudo cp src/deepdrive_micro/deepdrive_micro.uf2 /mnt/sda1
 ## Run micro ros Agent
 ```sh
 mamba activate ros_env
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 -b 921600
 
 ros2 topic echo deepdrive_micro/pulses
 ```
@@ -115,15 +115,18 @@ front_right_wheel_velocity  89018
 
 
 # TODO
-- Mutexes don't work across cores. Use FIFO to tell core0 which step core1 is on: https://github.com/raspberrypi/pico-examples/blob/master/multicore/multicore_fifo_irqs/multicore_fifo_irqs.c
 - Watchdog for restarts
+- Base class for publishers
+- Put back the motor publisher to watch motor speeds
+- Control loop has a timer, but I think it should just poll and let the subtasks time themselves
+- Speed up core0 with static memory https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
+- Mutexes don't work across cores. Use FIFO to tell core0 which step core1 is on: https://github.com/raspberrypi/pico-examples/blob/master/multicore/multicore_fifo_irqs/multicore_fifo_irqs.c
 - Add status for each publisher to diagnostic
 - Fix up error handling throughout and status manager
 - IMU SPI?
 - Average IMU Readings
 - Timeout if no twist received for some period of time and stop motors
 - if a motor is not getting any pulses after some time, raise some kind of error and stop
-- Break up different cpp files into separate classes
 - take minimum pulses for a side to remove outliers
 - IMU Retries
 - Set status string for diagnostic
@@ -147,7 +150,6 @@ front_right_wheel_velocity  89018
 - param server for pid, speed, etc - mostly coded, just needs to fix the build
 - use flash to save params
 
-- speed up publishing with static memory https://github.com/micro-ROS/micro-ROS-demos/blob/humble/rclc/static_type_handling/main.c https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
 
 
 ### Motor Feedback Loop

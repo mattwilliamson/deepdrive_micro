@@ -28,6 +28,7 @@ add_executable(deepdrive_micro
     # src/led_ring_main.c
 
     src/pico_uart_transport.c
+    src/memory_usage.c
 
     src/node.cpp
     src/control_loop.cpp
