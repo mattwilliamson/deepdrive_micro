@@ -55,8 +55,12 @@ class Motor {
   static const Micrometers WHEEL_RADIUS = WHEEL_DIAMETER / 2.0;
   // 89 * 3.14159 = 280.5 mm per revolution -> .281 meters/rev
 
+  // Since this is a skid-steer, we will lose some distance when turning
+  // counteract by making wheel base wider
+  static constexpr float WHEEL_BASE_COEFFICIENT = 1.5;
+
   // distance between left and right wheels
-  static const Micrometers WHEEL_BASE = 240 * MICRO_METERS / MILLI_METERS;
+  static constexpr Micrometers WHEEL_BASE = WHEEL_BASE_COEFFICIENT * 240 * MICRO_METERS / MILLI_METERS;
 
   // TODO: There is some backlash in the motor, so we need to add some deadband
   // (~696-688=8 pulses) Forward: 34826/50 = 696 | 93156/127 = 734 | 34942/50.2
@@ -64,7 +68,7 @@ class Motor {
   // -687
 
   // Pulse count per revolution of the motor
-  static const Pulses PULSES_PER_REV = 696 * 2; // 2x for rising and falling edge
+  static const Pulses PULSES_PER_REV = 696 * 2;  // 2x for rising and falling edge
 
   // Pulses per second at full throttle (of the slowest motor)
   static const Pulses MAX_SPEED_PPS = 1450 * 2;  // 2x for rising and falling edge
@@ -74,7 +78,7 @@ class Motor {
 
   // Number of pulses at max speed for each time slice of the control loop
   static constexpr Pulses MAX_PULSES_PER_LOOP = MAX_SPEED_PPS / CONTROL_LOOP_HZ;
-  
+
   // static constexpr Pulses PULSES_PER_UM = PULSES_PER_REV / UM_PER_REV;
   // static constexpr double MAX_SPEED_US_PER = MAX_SPEED_PPS / PULSES_PER_UM;
   // // Meter per second at full throttle
@@ -260,8 +264,8 @@ class Motor {
    */
   Pulses getPulses() { return pulses_; }
 
-  Micrometers getTotalMicrometers() { 
-    return pulsesToMicrometers(pulses_); 
+  Micrometers getTotalMicrometers() {
+    return pulsesToMicrometers(pulses_);
   }
 
   Meters getTotalMeters() {

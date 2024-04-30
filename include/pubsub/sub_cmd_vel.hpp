@@ -47,6 +47,21 @@ class SubCmdVel {
   void callback(const geometry_msgs__msg__Twist *m);
 
   /**
+   * @brief Get the timestamp of the last received message.
+   * @return The timestamp of the last received message.
+   */
+  int64_t getLastMessage() {
+    return last_message_;
+  }
+  
+  /**
+   * @brief Reset the timestamp of the last received message.
+   */
+  void resetLastMessage() {
+    last_message_ = 0;
+  }
+
+  /**
    * @brief Destructor for SubCmdVel class.
    */
   ~SubCmdVel();
@@ -59,10 +74,11 @@ class SubCmdVel {
   rcl_subscription_t subscription_; /**< ROS subscription object. */
   const char *topic_; /**< The topic to subscribe to. */
   mutex_t lock_; /**< Mutex for thread safety. */
-  geometry_msgs__msg__Twist msg_; /**< Received cmd_vel message. */
+  geometry_msgs__msg__Twist *msg_; /**< Received cmd_vel message. */
   MotorManager *motor_manager_; /**< Pointer to the MotorManager object. */
   int16_t status_; /**< Status of the SubCmdVel object. */
   bool data_ready_; /**< Flag indicating if new data is ready. */
+  int64_t last_message_; /**< Timestamp of the last received message. */
 
   /**
    * @brief Internal callback function for processing cmd_vel messages.

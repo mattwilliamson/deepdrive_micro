@@ -39,6 +39,9 @@ Node::Node() {
   // Battery sensor & temperature sensor
   analog_sensors = new AnalogSensors();
 
+  // Buzzer for audio feedback
+  buzzer = new Buzzer(BUZZER_PIN);
+
   motor_manager_ = new MotorManager();
 
   // IMU publisher
@@ -46,9 +49,11 @@ Node::Node() {
   pub_joint_state = new PubJointState(&node, &support, &allocator, motor_manager_);
   pub_telemetry = new PubTelemetry(&node, &support, &allocator, motor_manager_);
   pub_odom = new PubOdom(&node, &support, &allocator, motor_manager_);
-  pub_battery_state = new PubBatteryState(&node, &support, &allocator, analog_sensors);
+  pub_battery_state = new PubBatteryState(&node, &support, &allocator, analog_sensors, buzzer);
+  pub_wheel_speed = new PubWheelSpeed(&node, &support, &allocator, motor_manager_);
 
   sub_cmd_vel = new SubCmdVel(&node, &support, &allocator, &executor, motor_manager_);
+  sub_wheel_speed = new SubWheelSpeed(&node, &support, &allocator, &executor, motor_manager_);
 
   status.set(Status::Connected);
 }
@@ -82,13 +87,16 @@ Node::~Node() {
 
   delete motor_manager_;
   delete analog_sensors;
+  delete buzzer;
 
   delete pub_imu;
   delete pub_joint_state;
+  delete pub_wheel_speed;
   delete pub_telemetry;
   delete pub_odom;
   delete pub_battery_state;
 
   delete sub_cmd_vel;
+  delete sub_wheel_speed;
 
 }

@@ -19,15 +19,16 @@ SubCmdVel::SubCmdVel(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t 
   support_ = support;
   motor_manager_ = motor_manager;
   executor_ = executor;
-  // msg_ = geometry_msgs__msg__Twist__create();
+  msg_ = geometry_msgs__msg__Twist__create();
   status_ = 0;
   data_ready_ = false;
   topic_ = topic;
+  last_message_ = 0;
 
   status_ = rclc_subscription_init_default(&subscription_, node_,
                                            ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
                                            topic_);
-  status_ = rclc_executor_add_subscription(executor_, &subscription_, &msg_,
+  status_ = rclc_executor_add_subscription(executor_, &subscription_, msg_,
                                            &_sub_cmd_vel_callback, ON_NEW_DATA);
 }
 
@@ -65,6 +66,8 @@ void SubCmdVel::callback(const geometry_msgs__msg__Twist *msg) {
   motors[IDX_MOTOR_BACK_LEFT]->setTargetSpeedMeters(left);
   motors[IDX_MOTOR_FRONT_RIGHT]->setTargetSpeedMeters(right);
   motors[IDX_MOTOR_BACK_RIGHT]->setTargetSpeedMeters(right);
+
+  last_message_ = rmw_uros_epoch_nanos();
 }
 
 SubCmdVel::~SubCmdVel() {

@@ -44,17 +44,15 @@ void Node::spin_control_loop() {
 
       // Read any motor encoder pulses
       motor_manager_->update_motor_outputs();
-
-      // Publish any due messages
-      pub_odom->calculate();
-      pub_imu->calculate();
-      pub_telemetry->calculate();
-      pub_joint_state->calculate();
-      pub_battery_state->calculate();
-
-      // TODO: Do other processing here to make publishing on core0 as fast as
-      // possible e.g. calculate odometry, publish sensor data, etc.
     }
+
+    // Publish any due messages
+    pub_odom->calculate();
+    pub_imu->calculate();
+    pub_telemetry->calculate();
+    pub_joint_state->calculate();
+    pub_wheel_speed->calculate();
+    pub_battery_state->calculate();
 
 #ifndef LED_RING_ENABLED
     led_ring.off();
@@ -68,10 +66,17 @@ void Node::spin_control_loop() {
     }
 #endif
 
+  int64_t lastCmdVel = sub_cmd_vel->getLastMessage();
+    if (lastCmdVel != 0 && rmw_uros_epoch_nanos() - sub_cmd_vel->getLastMessage() > CMD_VEL_TIMEOUT) {
+      motor_manager_->disable_motors();
+      StatusManager::getInstance().set(Status::Error);
+      sub_cmd_vel->resetLastMessage();
+    }
+
     pub_telemetry->set_core_stop(core);
 
     // Sit tight until we have more work to do
-    tight_loop_contents();
+    // tight_loop_contents();
     // sleep_ms(1);
   }
 }

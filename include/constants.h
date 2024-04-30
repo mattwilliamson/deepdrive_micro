@@ -1,6 +1,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#define NANOSECONDS 1e9
 #define MICROSECONDS 1e6
 #define MILLISECONDS 1e3
 

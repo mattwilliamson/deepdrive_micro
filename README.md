@@ -115,24 +115,27 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Emergency stop for twist mux - in case of cliffs or whatnot - publish std_msgs::Bool to /e_stop
+- Add config for open loop and bypass pulse counter
+- if a motor is not getting any pulses after some time, raise some kind of error and stop
+- take minimum pulses for a side to remove outliers
+- Sonar for front and back
+- Odom is off. check each source independently. might need to fix pulse counters somehow
+- need to tune PID controller under load
 - Watchdog for restarts
 - Base class for publishers
-- Put back the motor publisher to watch motor speeds
-- Control loop has a timer, but I think it should just poll and let the subtasks time themselves
 - Speed up core0 with static memory https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
 - Mutexes don't work across cores. Use FIFO to tell core0 which step core1 is on: https://github.com/raspberrypi/pico-examples/blob/master/multicore/multicore_fifo_irqs/multicore_fifo_irqs.c
 - Add status for each publisher to diagnostic
 - Fix up error handling throughout and status manager
 - IMU SPI?
 - Average IMU Readings
-- Timeout if no twist received for some period of time and stop motors
-- if a motor is not getting any pulses after some time, raise some kind of error and stop
-- take minimum pulses for a side to remove outliers
 - IMU Retries
 - Set status string for diagnostic
 - average battery voltage
 
 - move lidar back to make room for usb
+- OR move jetson to passenger side with riser and rotate clockwise 90 degrees
 - clear petg led ring fresnel lens
 - 3m screws for led cover
 - IMU AD0 pin connect to address select

@@ -14,7 +14,11 @@
 // #define NDEBUG
 
 // If this is defined, don't actually send motor commands, just simulate them and publish odom
+// Good for testing or if we have a different source of odometry
 // #define ODOM_SIMULATE
+
+// This is for open loop control, where we just set the motor speed and don't use encoders
+#define ODOM_OPEN_LOOP
 
 // TODO: Put covariance here
 
@@ -23,13 +27,16 @@ static const int MILLI_METERS = 1e3;
 
 // #define STATUS_LED_ENABLED 1
 
+// Control loop updates the motor speed and pid controllers
 // #define CONTROL_LOOP_HZ 4.0
 #define CONTROL_LOOP_HZ 30
+
 #define MAIN_LOOP_HZ 10
-// Run the IMU at a higher rate so the data can be filtered for orientation estimation
-#define IMU_LOOP_HZ 100
 #define TELEMETRY_LOOP_HZ 2
 #define BATTERY_STATE_LOOP_HZ 2
+
+// Run the IMU at a higher rate so the data can be filtered for orientation estimation
+#define IMU_LOOP_HZ 100
 
 // Comment out to disable
 // #define WATCHDOG_ENABLED
@@ -84,6 +91,8 @@ static const int MILLI_METERS = 1e3;
 // START MOTORS
 // ----------------------------------
 
+#define CMD_VEL_TIMEOUT 1 * NANOSECONDS
+
 #define MOTOR_COUNT 4
 
 #define PIN_MOTOR_FRONT_LEFT 9
@@ -107,10 +116,13 @@ static const int MILLI_METERS = 1e3;
 // END MOTORS
 // ----------------------------------
 
+
 // ----------------------------------
 // START WHEEL ENCODER PULSE COUNTER
 // ----------------------------------
 
+// If we have noisy encoders, we might get pulses when we aren't actually moving. This will ignore them if speed = 0;
+// #define WHEEL_ENCODER_IGNORE_STOPPED
 #define PIN_ENCODER_FRONT_LEFT 13
 #define PIN_ENCODER_BACK_LEFT 12
 #define PIN_ENCODER_FRONT_RIGHT 11
@@ -121,6 +133,7 @@ static const int MILLI_METERS = 1e3;
 
 // END WHEEL ENCODER PULSE COUNTER
 // ----------------------------------
+
 
 // ----------------------------------
 // START PID CONTROLLER
@@ -136,12 +149,12 @@ static const int MILLI_METERS = 1e3;
 // #define PID_KD 0.2
 
 // Proportional
-#define PID_KP (0.02 * CONTROL_LOOP_HZ)
-// #define PID_KP (0.025 * CONTROL_LOOP_HZ)
+// #define PID_KP (0.02 * CONTROL_LOOP_HZ)
+#define PID_KP (0.01 * CONTROL_LOOP_HZ)
 // #define PID_KP 0.019 * CONTROL_LOOP_HZ
 
 // Integral
-#define PID_KI (0.001 * CONTROL_LOOP_HZ)
+#define PID_KI (0.002 * CONTROL_LOOP_HZ)
 // #define PID_KI (0.0015 * CONTROL_LOOP_HZ)
 // #define PID_KI (0.002 * CONTROL_LOOP_HZ)
 
@@ -169,7 +182,7 @@ static const int MILLI_METERS = 1e3;
 // ADC_REF = 3.277, Voltage Divider = 1.902, ADC Calculated =1.8839550018310547
 #define BATTERY_VOLTAGE_REFERENCE 3.277f
 #define BATTERY_VOLTAGE_CONVERSION 11.07f / 1.8839550018310547f
-#define BATTERY_CELLS 3
+#define BATTERY_CELLS 4
 #define BATTERY_CAPACITY 5200  // mAh
 
 // END BATTERY VOLTAGE
@@ -203,5 +216,25 @@ static const int MILLI_METERS = 1e3;
 
 // END DIAGNOSTICS
 // ----------------------------------
+
+
+// ----------------------------------
+// START BUZZER
+// ----------------------------------
+
+#define BUZZER_ENABLED 1
+#define BUZZER_PIN 17
+
+// Percent to start warning beeps at
+#define BUZZER_BATTERY_WARN 20.0
+
+// Percent to start error beeps at
+#define BUZZER_BATTERY_ERROR 10.0
+
+#define BUZZER_WARN_INTERVAL 30 * NANOSECONDS  // 1 second
+#define BUZZER_ERROR_INTERVAL 10 * NANOSECONDS  // 1 second
+
+// ----------------------------------
+
 
 #endif  // CONFIG_H

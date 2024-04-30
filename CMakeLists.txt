@@ -19,6 +19,7 @@ include_directories(
     lib/SparkFun_ICM-20948_ArduinoLibrary/src
     lib/pico-icm20948
     lib/Fusion
+    lib
 )
 
 link_directories(lib/libmicroros)
@@ -51,6 +52,7 @@ add_executable(deepdrive_micro
 
     # Subscribers
     src/pubsub/sub_cmd_vel.cpp
+    src/pubsub/sub_wheel_speed.cpp
 
     # Publishers
     src/pubsub/pub_odom.cpp
@@ -58,13 +60,19 @@ add_executable(deepdrive_micro
     src/pubsub/pub_battery_state.cpp
     src/pubsub/pub_imu.cpp
     src/pubsub/pub_joint_state.cpp
+    src/pubsub/pub_wheel_speed.cpp
 
     # IMU
     # lib/SparkFun_ICM-20948_ArduinoLibrary/src/util/ICM_20948_C.c
     # lib/SparkFun_ICM-20948_ArduinoLibrary/src/ICM_20948.cpp
     lib/pico-icm20948/pico-icm20948.c
 
+    # IMU Fusion
     ${fusion_files}
+
+    # Buzzer
+    src/buzzer.cpp
+    lib/pwm-tone/pwm-tone.c
 )
 
 # To add to this, here are examples: `cat /usr/src/pico-sdk/test/kitchen_sink/CMakeLists.txt | grep pwm`

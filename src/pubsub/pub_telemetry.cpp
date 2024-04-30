@@ -64,8 +64,6 @@ PubTelemetry::PubTelemetry(rcl_node_t *node, rclc_support_t *support, rcl_alloca
   diag->values.data[Diag::MEM_USED].key = micro_ros_string_utilities_init("Memory Used (bytes)");
   diag->values.data[Diag::MEM_USED].value = micro_ros_string_utilities_init("9999999999");
 
-
-
   assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubTelemetry::trigger, NULL, &timer_));
 }
 
@@ -127,7 +125,6 @@ void PubTelemetry::calculate() {
       diag->level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
       break;
   }
-
 
   // TODO: Send Status
   if (!rmw_uros_epoch_synchronized()) {

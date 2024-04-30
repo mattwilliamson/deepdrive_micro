@@ -14,13 +14,16 @@ extern "C" {
 #include "led_ring.hpp"
 #include "motor.hpp"
 #include "status.hpp"
+#include "buzzer.hpp"
 #include "pubsub/pub_odom.hpp"
 #include "pubsub/pub_imu.hpp"
 #include "motor_manager.hpp"
 #include "pubsub/pub_telemetry.hpp"
 #include "pubsub/pub_joint_state.hpp"
 #include "pubsub/pub_battery_state.hpp"
+#include "pubsub/pub_wheel_speed.hpp"
 #include "pubsub/sub_cmd_vel.hpp"
+#include "pubsub/sub_wheel_speed.hpp"
 
 /**
  * @class Node
@@ -53,12 +56,15 @@ class Node {
   PubTelemetry *pub_telemetry;
   PubJointState *pub_joint_state;
   PubBatteryState *pub_battery_state;
+  PubWheelSpeed *pub_wheel_speed;
 
   SubCmdVel *sub_cmd_vel;
+  SubWheelSpeed *sub_wheel_speed;
 
   LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
   StatusManager status;
   AnalogSensors* analog_sensors;
+  Buzzer* buzzer;
 
   // TODO: Do I need to publish trajectory_msgs__msg__JointTrajectoryPoint ?
 

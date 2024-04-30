@@ -3,6 +3,7 @@
 
 #include "analog_sensors.hpp"
 #include "pubsub/pubsub.hpp"
+#include "buzzer.hpp"
 #include "status.hpp"
 #include "constants.h"
 
@@ -32,6 +33,7 @@ class PubBatteryState {
    */
   PubBatteryState(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
               AnalogSensors *analog_sensors, 
+              Buzzer *buzzer,
                int64_t timer_hz = BATTERY_STATE_LOOP_HZ,
                const char *topic_name = "~/battery",
                const char *frame_id = BATTERY_FRAME);
@@ -45,6 +47,11 @@ class PubBatteryState {
    * @brief Calculate the battery state.
    */
   void calculate();
+
+  /**
+   * @brief Play a buzzer if hte battery is low and such.
+   */
+  void checkBuzzer();
 
   /**
    * @brief Destructor for PubBatteryState.
@@ -63,9 +70,12 @@ class PubBatteryState {
   sensor_msgs__msg__BatteryState *msg_; /**< The battery state message. */
 
   AnalogSensors *analog_sensors_; /**< Pointer to the AnalogSensors object. */
+  Buzzer *buzzer_; /**< Pointer to the Buzzer object. */
 
   int16_t status_; /**< The battery status. */
   bool data_ready_; /**< Flag indicating if data is ready. */
+
+  int64_t buzzer_last_played_ = 0; /**< The last time the buzzer was played. */
 
   /**
    * @brief Static trigger function for the repeating timer.

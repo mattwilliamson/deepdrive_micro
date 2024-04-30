@@ -44,7 +44,7 @@ void Motor::start() {
     } else {
       gpio_set_irq_enabled(encoderPin_, GPIO_IRQ_TYPES, true);
     }
-    gpio_pull_down(encoderPin_);
+    gpio_pull_up(encoderPin_);
     pulse_count_map[encoderPin_] = 0;
   }
 
@@ -74,19 +74,27 @@ void Motor::readPulses() {
   // clear out the left 16 bits to reset
   pulse_count_map[encoderPin_] &= 0x0000FFFF;
 
-  #ifdef ODOM_SIMULATE
-    static int16_t lastSpeedSignal = 0;
-    // Simulate the pulses with a little noise
-    int noise = rand() % 2;
-    // How much weight to put on the previous value
-    static const int16_t prevWeight = 5;
-    int16_t weightedPulses = ((prevWeight * lastSpeedSignal) + speedSignal_) / (prevWeight + 1);
-    newPulses = (weightedPulses / CONTROL_LOOP_HZ) + noise;
-    lastSpeedSignal = speedSignal_;
-  #endif
+#ifdef ODOM_SIMULATE
+  // For testing. We are not actually using the motors.
+  static int16_t lastSpeedSignal = 0;
+  // Simulate the pulses with a little noise
+  int noise = rand() % 2;
+  // How much weight to put on the previous value
+  static const int16_t prevWeight = 5;
+  int16_t weightedPulses = ((prevWeight * lastSpeedSignal) + speedSignal_) / (prevWeight + 1);
+  newPulses = (weightedPulses / CONTROL_LOOP_HZ) + noise;
+  lastSpeedSignal = speedSignal_;
+#endif
+
+#ifdef ODOM_OPEN_LOOP
+  // Open loop control, just set the speed and ignore pulses.
+  newPulses = speedSignal_;
+#endif
 
   // Update total pulses
-  if (newPulses > 0 && direction_ != 0) {
+  // TODO: We might need to update direction after we have changed speed so we don't miss pulses
+
+  if (newPulses > 0) {
     pulses_ += newPulses * direction_;
   }
 
@@ -112,12 +120,18 @@ void Motor::setSpeedSignal(Pulses speed) {
   speedSignal_ = speed;
 
   if (speed < 0) {
+    // Backward
     direction_ = -1;
-
   } else if (speed > 0) {
+    // Forward
     direction_ = 1;
   } else {
+// Stopped
+#ifdef WHEEL_ENCODER_IGNORE_STOPPED
     direction_ = 0;
+#else
+    direction_ = 1;
+#endif
   }
 
   // Set the motor PWM duty cycle

@@ -9,6 +9,7 @@ bool PubBatteryState::trigger(repeating_timer_t *rt) {
 
 PubBatteryState::PubBatteryState(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator,
                                  AnalogSensors *analog_sensors,
+                                 Buzzer *buzzer,
                                  int64_t timer_hz,
                                  const char *topic_name,
                                  const char *frame_id) {
@@ -16,6 +17,9 @@ PubBatteryState::PubBatteryState(rcl_node_t *node, rclc_support_t *support, rcl_
   allocator_ = allocator;
   support_ = support;
   analog_sensors_ = analog_sensors;
+  buzzer_ = buzzer;
+  buzzer_last_played_ = 0;
+
   msg_ = sensor_msgs__msg__BatteryState__create();
 
   msg_->header.frame_id = micro_ros_string_utilities_init(frame_id);
@@ -75,7 +79,31 @@ void PubBatteryState::publish() {
     data_ready_ = false;
   }
 
+  checkBuzzer();
+
   mutex_exit(&lock_);
+}
+
+void PubBatteryState::checkBuzzer() {
+  // TODO: Make this a bit more generic. maybe an event system?
+  
+  if (msg_->percentage < BUZZER_BATTERY_ERROR) {
+    if (rmw_uros_epoch_nanos() - buzzer_last_played_ > BUZZER_WARN_INTERVAL) {
+      buzzer_->playTune(Buzzer::Tune::ERROR);
+      buzzer_last_played_ = rmw_uros_epoch_nanos();
+      StatusManager::getInstance().set(Status::Error);
+    }
+
+  } else if (msg_->percentage < BUZZER_BATTERY_WARN) {
+    if (rmw_uros_epoch_nanos() - buzzer_last_played_ > BUZZER_WARN_INTERVAL) {
+      buzzer_->playTune(Buzzer::Tune::WARNING);
+      buzzer_last_played_ = rmw_uros_epoch_nanos();
+      StatusManager::getInstance().set(Status::Warning);
+    }
+  } else {
+    buzzer_->stop();
+    // StatusManager::getInstance().set(Status::Active);
+  }
 }
 
 PubBatteryState::~PubBatteryState() {
