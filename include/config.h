@@ -18,12 +18,13 @@
 // #define ODOM_SIMULATE
 
 // This is for open loop control, where we just set the motor speed and don't use encoders
-#define ODOM_OPEN_LOOP
+// #define ODOM_OPEN_LOOP
 
 // TODO: Put covariance here
 
 static const int MICRO_METERS = 1e6;
 static const int MILLI_METERS = 1e3;
+static const int CENTI_METERS = 100.0;
 
 // #define STATUS_LED_ENABLED 1
 
@@ -91,7 +92,14 @@ static const int MILLI_METERS = 1e3;
 // START MOTORS
 // ----------------------------------
 
+// Time since last cmd_vel message before stopping the robot
 #define CMD_VEL_TIMEOUT 1 * NANOSECONDS
+
+// Meters per second squared
+#define MAX_ACCELERATION_LINEAR .1
+
+// Radians per second squared
+#define MAX_ACCELERATION_ROTATION .2
 
 #define MOTOR_COUNT 4
 
@@ -213,6 +221,8 @@ static const int MILLI_METERS = 1e3;
 #define DIAGNOSTIC_FRAME "base_link"
 #define DIAGNOSTIC_COUNT 1
 #define DIAGNOSTIC_ROWS 4
+#define DIAGNOSTIC_MESSAGE_LEN 50
+#define DIAGNOSTIC_NUMBER_LEN 20
 
 // END DIAGNOSTICS
 // ----------------------------------
@@ -235,6 +245,33 @@ static const int MILLI_METERS = 1e3;
 #define BUZZER_ERROR_INTERVAL 10 * NANOSECONDS  // 1 second
 
 // ----------------------------------
+
+
+
+// ----------------------------------
+// START SONAR
+// ----------------------------------
+
+#define SONAR_ENABLED 1
+// TODO: Front sensor and back sensor
+#define SONAR_TRIGGER_PIN_FRONT 21
+#define SONAR_ECHO_PIN_FRONT 20
+#define SONAR_TRIGGER_PIN_BACK 19
+#define SONAR_ECHO_PIN_BACK 18
+
+// Since a small object will cause a bounce, only use closes ranged objects for navigation
+// #define SONAR_MAX_DISTANCE 4.0f  // meters
+#define SONAR_MAX_DISTANCE 2.0f  // meters
+#define SONAR_MIN_DISTANCE 0.02f  // meters
+#define SONAR_FOV 15  // degrees
+#define SONAR_PUBLISH_RATE 10 // Hz
+#define SONAR_FRAME_FRONT "sonar_front_link" // Need to add separate frame
+#define SONAR_FRAME_BACK "sonar_back_link" // Need to add separate frame
+#define SONAR_TOPIC_FRONT "~/sonar/front"
+#define SONAR_TOPIC_BACK "~/sonar/back"
+
+// PIO FIFOs are only four words (of 32 bits)
+#define SONAR_SAMPLES 4
 
 
 #endif  // CONFIG_H

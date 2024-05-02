@@ -47,22 +47,24 @@ PubTelemetry::PubTelemetry(rcl_node_t *node, rclc_support_t *support, rcl_alloca
 
   diag->hardware_id = micro_ros_string_utilities_init("deepdrive_micro");
   diag->name = micro_ros_string_utilities_init("DeepDrive Status");
-  diag->message = micro_ros_string_utilities_init("SUPERCALIFRAGILISTICEXPIALIDOCIOUS");
+  diag->message = micro_ros_string_utilities_init_with_size(DIAGNOSTIC_MESSAGE_LEN);
 
   diag->values.data[Diag::IMU].key = micro_ros_string_utilities_init("IMU Status");
 
   // Preallocate these strings
-  diag->values.data[Diag::CORE_0].key = micro_ros_string_utilities_init("Core 0 Loop Time (us)");
-  diag->values.data[Diag::CORE_0].value = micro_ros_string_utilities_init("9999999999");
+  // diag->values.data[Diag::CORE_0].key = micro_ros_string_utilities_init("Core 0 Loop Time (us)");
+  diag->values.data[Diag::CORE_0].key = micro_ros_string_utilities_init("Core 0 Loop Rate (Hz)");
+  diag->values.data[Diag::CORE_0].value = micro_ros_string_utilities_init_with_size(DIAGNOSTIC_NUMBER_LEN);
 
-  diag->values.data[Diag::CORE_1].key = micro_ros_string_utilities_init("Core 1 Loop Time (us)");
-  diag->values.data[Diag::CORE_1].value = micro_ros_string_utilities_init("9999999999");
+  // diag->values.data[Diag::CORE_1].key = micro_ros_string_utilities_init("Core 1 Loop Time (us)");
+  diag->values.data[Diag::CORE_1].key = micro_ros_string_utilities_init("Core 1 Loop Rate (Hz)");
+  diag->values.data[Diag::CORE_1].value = micro_ros_string_utilities_init_with_size(DIAGNOSTIC_NUMBER_LEN);
 
   diag->values.data[Diag::MEM_FREE].key = micro_ros_string_utilities_init("Memory Free (bytes)");
-  diag->values.data[Diag::MEM_FREE].value = micro_ros_string_utilities_init("9999999999");
+  diag->values.data[Diag::MEM_FREE].value = micro_ros_string_utilities_init_with_size(DIAGNOSTIC_NUMBER_LEN);
 
   diag->values.data[Diag::MEM_USED].key = micro_ros_string_utilities_init("Memory Used (bytes)");
-  diag->values.data[Diag::MEM_USED].value = micro_ros_string_utilities_init("9999999999");
+  diag->values.data[Diag::MEM_USED].value = micro_ros_string_utilities_init_with_size(DIAGNOSTIC_NUMBER_LEN);
 
   assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubTelemetry::trigger, NULL, &timer_));
 }
@@ -96,8 +98,14 @@ void PubTelemetry::calculate() {
 
   diagnostic_msgs__msg__DiagnosticStatus *diag = &msg_->status.data[0];
 
-  itoa(core_elapsed_[0], diag->values.data[Diag::CORE_0].value.data, 10);
-  itoa(core_elapsed_[1], diag->values.data[Diag::CORE_1].value.data, 10);
+  // itoa(core_elapsed_[0], diag->values.data[Diag::CORE_0].value.data, 10);
+  // itoa(core_elapsed_[1], diag->values.data[Diag::CORE_1].value.data, 10);
+  // Hz
+  // itoa(MICROSECONDS / core_elapsed_[0], diag->values.data[Diag::CORE_0].value.data, 10);
+  // itoa(MICROSECONDS / core_elapsed_[1], diag->values.data[Diag::CORE_1].value.data, 10);
+
+  snprintf(diag->values.data[Diag::CORE_0].value.data, DIAGNOSTIC_NUMBER_LEN, "%f", (double)MICROSECONDS / core_elapsed_[0]);
+  snprintf(diag->values.data[Diag::CORE_1].value.data, DIAGNOSTIC_NUMBER_LEN, "%f", (double)MICROSECONDS / core_elapsed_[1]);
 
   itoa(get_free_heap(), diag->values.data[Diag::MEM_FREE].value.data, 10);
   itoa(get_used_heap(), diag->values.data[Diag::MEM_USED].value.data, 10);

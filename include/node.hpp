@@ -24,6 +24,7 @@ extern "C" {
 #include "pubsub/pub_wheel_speed.hpp"
 #include "pubsub/sub_cmd_vel.hpp"
 #include "pubsub/sub_wheel_speed.hpp"
+#include "pubsub/pub_sonar.hpp"
 
 /**
  * @class Node
@@ -57,6 +58,7 @@ class Node {
   PubJointState *pub_joint_state;
   PubBatteryState *pub_battery_state;
   PubWheelSpeed *pub_wheel_speed;
+  PubSonar *pub_sonar;
 
   SubCmdVel *sub_cmd_vel;
   SubWheelSpeed *sub_wheel_speed;

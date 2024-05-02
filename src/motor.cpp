@@ -158,12 +158,12 @@ void Motor::updateMotorOutput() {
   // Calculate instantaneous speed and PID controller output
   Pulses pid_output = calculatePid();
 
-  if (getTargetSpeed() == 0) {
+  // if (getTargetSpeed() == 0) {
     // We're supposed to be stopped, so let reset it all
-    stop();
-    pidController_->reset();
-  } else {
+    // stop();
+    // pidController_->reset();
+  // } else {
     // Set the motor speed to the output the PID controller calculated
     setSpeedSignal(pid_output);
-  }
+  // }
 }

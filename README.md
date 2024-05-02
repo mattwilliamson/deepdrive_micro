@@ -115,6 +115,8 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Convert sonar scan to LaserScan so Nav2 can use it?
+- Add frames to urdf for sonar
 - Emergency stop for twist mux - in case of cliffs or whatnot - publish std_msgs::Bool to /e_stop
 - Add config for open loop and bypass pulse counter
 - if a motor is not getting any pulses after some time, raise some kind of error and stop

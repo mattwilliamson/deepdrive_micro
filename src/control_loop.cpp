@@ -53,6 +53,7 @@ void Node::spin_control_loop() {
     pub_joint_state->calculate();
     pub_wheel_speed->calculate();
     pub_battery_state->calculate();
+    pub_sonar->calculate();
 
 #ifndef LED_RING_ENABLED
     led_ring.off();
@@ -66,7 +67,7 @@ void Node::spin_control_loop() {
     }
 #endif
 
-  int64_t lastCmdVel = sub_cmd_vel->getLastMessage();
+    int64_t lastCmdVel = sub_cmd_vel->getLastMessage();
     if (lastCmdVel != 0 && rmw_uros_epoch_nanos() - sub_cmd_vel->getLastMessage() > CMD_VEL_TIMEOUT) {
       motor_manager_->disable_motors();
       StatusManager::getInstance().set(Status::Error);

@@ -33,6 +33,7 @@ void Node::spin_main_loop(rcl_timer_t *timer, int64_t last_call_time) {
   pub_joint_state->publish();
   pub_wheel_speed->publish();
   pub_battery_state->publish();
+  pub_sonar->publish();
 
   pub_telemetry->set_core_stop(core);
 }

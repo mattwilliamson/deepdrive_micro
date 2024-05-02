@@ -28,7 +28,7 @@ class SubCmdVel {
    * @param topic The topic to subscribe to (default: "~/cmd_vel").
    */
   SubCmdVel(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator, rclc_executor_t *executor,
-            MotorManager *motor_manager, const char *topic = "~/cmd_vel");
+            MotorManager *motor_manager, const char *topic = "/cmd_vel");
 
   /**
    * @brief Subscribe to the cmd_vel topic.
@@ -51,14 +51,14 @@ class SubCmdVel {
    * @return The timestamp of the last received message.
    */
   int64_t getLastMessage() {
-    return last_message_;
+    return last_message_time_;
   }
   
   /**
    * @brief Reset the timestamp of the last received message.
    */
   void resetLastMessage() {
-    last_message_ = 0;
+    last_message_time_ = 0;
   }
 
   /**
@@ -74,11 +74,13 @@ class SubCmdVel {
   rcl_subscription_t subscription_; /**< ROS subscription object. */
   const char *topic_; /**< The topic to subscribe to. */
   mutex_t lock_; /**< Mutex for thread safety. */
-  geometry_msgs__msg__Twist *msg_; /**< Received cmd_vel message. */
   MotorManager *motor_manager_; /**< Pointer to the MotorManager object. */
   int16_t status_; /**< Status of the SubCmdVel object. */
   bool data_ready_; /**< Flag indicating if new data is ready. */
-  int64_t last_message_; /**< Timestamp of the last received message. */
+  geometry_msgs__msg__Twist *msg_; /**< Received cmd_vel message. */
+  geometry_msgs__msg__Twist *prev_msg_; /**< Received cmd_vel message. */
+  int64_t last_message_time_; /**< Timestamp of the last received message. */
+  
 
   /**
    * @brief Internal callback function for processing cmd_vel messages.

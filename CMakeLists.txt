@@ -15,10 +15,12 @@ file(GLOB_RECURSE fusion_files "lib/Fusion/*.c")
 
 include_directories(
     include
+    generated
     src/imu
     lib/SparkFun_ICM-20948_ArduinoLibrary/src
     lib/pico-icm20948
     lib/Fusion
+    lib/hc-sr04
     lib
 )
 
@@ -47,6 +49,7 @@ add_executable(deepdrive_micro
     src/pid.cpp
     src/analog_sensors.cpp
     src/watchdog.cpp
+    lib/hc-sr04/HCSR04.cpp
     
     src/pubsub/pubsub.cpp
 
@@ -61,6 +64,7 @@ add_executable(deepdrive_micro
     src/pubsub/pub_imu.cpp
     src/pubsub/pub_joint_state.cpp
     src/pubsub/pub_wheel_speed.cpp
+    src/pubsub/pub_sonar.cpp
 
     # IMU
     # lib/SparkFun_ICM-20948_ArduinoLibrary/src/util/ICM_20948_C.c
@@ -119,6 +123,11 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/generated)
 
 # generate the header file into the source tree as it is included in the RP2040 datasheet
 pico_generate_pio_header(deepdrive_micro ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
+
+##############
+# HC-SR04 Ultrasonic rangefinder
+pico_generate_pio_header(deepdrive_micro ${CMAKE_CURRENT_LIST_DIR}/lib/hc-sr04/HCSR04.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
+
 
 # target_link_libraries(deepdrive_micro PRIVATE pico_stdlib hardware_pio)
 pico_add_extra_outputs(deepdrive_micro)
