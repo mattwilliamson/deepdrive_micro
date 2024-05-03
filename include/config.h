@@ -252,8 +252,11 @@ static const int CENTI_METERS = 100.0;
 // START SONAR
 // ----------------------------------
 
+// TODO: Actually use this macro
 #define SONAR_ENABLED 1
-// TODO: Front sensor and back sensor
+
+#define SONAR_SENSORS 2
+
 #define SONAR_TRIGGER_PIN_FRONT 21
 #define SONAR_ECHO_PIN_FRONT 20
 #define SONAR_TRIGGER_PIN_BACK 19
@@ -269,6 +272,7 @@ static const int CENTI_METERS = 100.0;
 #define SONAR_FRAME_BACK "sonar_back_link" // Need to add separate frame
 #define SONAR_TOPIC_FRONT "~/sonar/front"
 #define SONAR_TOPIC_BACK "~/sonar/back"
+#define SONAR_LASER_RAYS 30
 
 // PIO FIFOs are only four words (of 32 bits)
 #define SONAR_SAMPLES 4

@@ -1,84 +1,88 @@
 #include <stdio.h>
 
-#include "pico/stdlib.h"
-#include "hardware/pio.h"
-
 #include "HCSR04.pio.h"
+#include "hardware/pio.h"
+#include "pico/stdlib.h"
 
 // class that sets up and reads the HCSR04
 // The HCSR04 works by giving it a 10 us pulse on its Trigger pin
 // The distance to an object is represented by the length of the pulse on its Echo pin
-class HCSR04
-{
-public:
-    // constructor
-    // input = pin connected to the 'Echo' pin of the HCSR04.
-    // ! NOTE: USE A VOLTAGE DIVIDER FOR THE INPUT (i.e. the Echo pin of the HCSR04)
-    //         to go from 5V (which is needed by the HCSR04 module) to 3.3V
-    // output = pin connected to the 'Trig' pin of the HCSR04.
-    HCSR04(uint input, uint output)
-    {
-        // pio 0 is used
-        pio = pio1;
-        
-        // state machine 0
-        sm = pio_claim_unused_sm(pio, true);
-        // configure the used pins
-        pio_gpio_init(pio, input);
-        pio_gpio_init(pio, output);
-        // load the pio program into the pio memory
-        uint offset = pio_add_program(pio, &HCSR04_program);
-        // make a sm config
-        pio_sm_config c = HCSR04_program_get_default_config(offset);
-        // set the 'in' pins, also used for 'wait'
-        sm_config_set_in_pins(&c, input);
-        // set the 'jmp' pin
-        sm_config_set_jmp_pin(&c, input);
-        // set the output pin to output
-        pio_sm_set_consecutive_pindirs(pio, sm, output, 1, true);
-        // set the 'set' pins
-        sm_config_set_set_pins(&c, output, 1);
-        // set shift direction
-        sm_config_set_in_shift(&c, false, false, 0);
-        // init the pio sm with the config
-        pio_sm_init(pio, sm, offset, &c);
-        // enable the sm
-        pio_sm_set_enabled(pio, sm, true);
-    }
+class HCSR04 {
+ public:
+  // constructor
+  // input = pin connected to the 'Echo' pin of the HCSR04.
+  // ! NOTE: USE A VOLTAGE DIVIDER FOR THE INPUT (i.e. the Echo pin of the HCSR04)
+  //         to go from 5V (which is needed by the HCSR04 module) to 3.3V
+  // output = pin connected to the 'Trig' pin of the HCSR04.
+  HCSR04(uint input, uint output) {
+    // pio 1 is used
+    pio = pio1;
 
-    void trigger() {
-        // clear the FIFO: do a new measurement
-        pio_sm_clear_fifos(pio, sm);
-    }
+    // state machine 0-3
+    sm = pio_claim_unused_sm(pio, true);
+    // configure the used pins
+    pio_gpio_init(pio, input);
+    pio_gpio_init(pio, output);
 
-    // read the distance to an object in m (0 m means invalid measurement)
-    double read(void) {
-        // value is used to read from the sm RX FIFO
-        uint32_t clock_cycles = 0;
-        // give the sm some time to do a measurement and place it in the FIFO
-        // sleep_ms(100);
-        // check that the FIFO isn't empty
-        if (pio_sm_is_rx_fifo_empty(pio, sm))
-        {
-            return 0;
-        }
-        // read one data item from the FIFO
-        // Note: every test for the end of the echo puls takes 2 pio clock ticks,
-        //       but changes the 'timer' by only one
-        clock_cycles = 2 * pio_sm_get(pio, sm);
-        // using
-        // - the time for 1 pio clock tick (1/125000000 s)
-        // - speed of sound in air is about 340 m/s
-        // - the sound travels from the HCSR04 to the object and back (twice the distance)
-        // we can calculate the distance in m by multiplying with 0.000136
-        return 340.0 / 2.0 * clock_cycles / 125000000;
-    }
+    // We only want to load the program once and use multiple state machines to run it
+    static bool program_loaded_ = false;
+    static uint offset;
 
-private:
-    // the pio instance
-    PIO pio;
-    // the state machine
-    uint sm;
+    if (!program_loaded_) {
+      // load the pio program into the pio memory
+      offset = pio_add_program(pio, &HCSR04_program);
+      program_loaded_ = true;
+    }
+    // make a sm config
+    pio_sm_config c = HCSR04_program_get_default_config(offset);
+    // set the 'in' pins, also used for 'wait'
+    sm_config_set_in_pins(&c, input);
+    // set the 'jmp' pin
+    sm_config_set_jmp_pin(&c, input);
+    // set the output pin to output
+    pio_sm_set_consecutive_pindirs(pio, sm, output, 1, true);
+    // set the 'set' pins
+    sm_config_set_set_pins(&c, output, 1);
+    // set shift direction
+    sm_config_set_in_shift(&c, false, false, 0);
+    // init the pio sm with the config
+    pio_sm_init(pio, sm, offset, &c);
+    // enable the sm
+    pio_sm_set_enabled(pio, sm, true);
+  }
+
+  void trigger() {
+    // clear the FIFO: do a new measurement
+    pio_sm_clear_fifos(pio, sm);
+  }
+
+  // read the distance to an object in m (0 m means invalid measurement)
+  double read(void) {
+    // value is used to read from the sm RX FIFO
+    uint32_t clock_cycles = 0;
+    // give the sm some time to do a measurement and place it in the FIFO
+    // sleep_ms(100);
+    // check that the FIFO isn't empty
+    if (pio_sm_is_rx_fifo_empty(pio, sm)) {
+      return 0;
+    }
+    // read one data item from the FIFO
+    // Note: every test for the end of the echo puls takes 2 pio clock ticks,
+    //       but changes the 'timer' by only one
+    clock_cycles = 2 * pio_sm_get(pio, sm);
+    // using
+    // - the time for 1 pio clock tick (1/125000000 s)
+    // - speed of sound in air is about 340 m/s
+    // - the sound travels from the HCSR04 to the object and back (twice the distance)
+    // we can calculate the distance in m by multiplying with 0.000136
+    return 340.0 / 2.0 * clock_cycles / 125000000;
+  }
+
+ private:
+  // the pio instance
+  PIO pio;
+  // the state machine
+  uint sm;
 };
 
 // int main()

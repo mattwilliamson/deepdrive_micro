@@ -1,9 +1,9 @@
 #include "pubsub/pub_sonar.hpp"
 
-static bool _pub_sonar_triggered;
+static bool _pub_sonar_triggered[SONAR_SENSORS];
 
 bool PubSonar::trigger(repeating_timer_t *rt) {
-  _pub_sonar_triggered = true;
+  _pub_sonar_triggered[(uint)rt->user_data] = true;
   return true;
 }
 
@@ -17,15 +17,18 @@ PubSonar::PubSonar(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *a
   allocator_ = allocator;
   support_ = support;
 
-  // sensor_msgs__msg__LaserScan__create()
-  msg_ = sensor_msgs__msg__Range__create();
+  msg_ = sensor_msgs__msg__LaserScan__create();
   msg_->header.frame_id = micro_ros_string_utilities_init(frame_id);
   // http://docs.ros.org/en/melodic/api/sensor_msgs/html/msg/Range.html
-  msg_->radiation_type = sensor_msgs__msg__Range__ULTRASOUND;
-  msg_->field_of_view = SONAR_FOV * M_PI / 180;  // degrees in radians
-  msg_->min_range = SONAR_MIN_DISTANCE;
-  msg_->max_range = SONAR_MAX_DISTANCE;
-  msg_->range = 0.0;
+  msg_->angle_min = -SONAR_FOV * M_PI / 180;                          // degrees in radians start of scane
+  msg_->angle_max = SONAR_FOV * M_PI / 180;                           // degrees in radians end of scan
+  msg_->angle_increment = SONAR_FOV * M_PI / 180 / SONAR_LASER_RAYS;  // degrees in radians
+  msg_->time_increment = 0.0;                                         // time between measurements [seconds]
+  msg_->scan_time = 1.0 / timer_hz;                                   // time between scans [seconds]
+  msg_->range_min = SONAR_MIN_DISTANCE;                               // minimum range value [m]
+  msg_->range_max = SONAR_MAX_DISTANCE;                               // maximum range value [m]
+  assert(rosidl_runtime_c__float32__Sequence__init(&msg_->ranges, SONAR_LASER_RAYS));
+  assert(rosidl_runtime_c__float32__Sequence__init(&msg_->intensities, 0));
 
   pin_trigger_ = trigger_pin;
   pin_echo_ = echo_pin;
@@ -43,18 +46,18 @@ PubSonar::PubSonar(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *a
 
   status_ = rclc_publisher_init_default(
       &publisher_, node_,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Range),
+      ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan),
       topic_name);
   assert(status_ == RCL_RET_OK);
 
   // Clear FIFO
   sonar_->trigger();
 
-  assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubSonar::trigger, NULL, &timer_));
+  assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubSonar::trigger, (void *)trigger_pin, &timer_));
 }
 
 void PubSonar::calculate() {
-  if (!_pub_sonar_triggered) {
+  if (!_pub_sonar_triggered[pin_trigger_]) {
     return;
   }
 
@@ -81,14 +84,18 @@ void PubSonar::calculate() {
     }
   }
 
+  // Default to nothing detected
+  double avg = infinity();
+
   // Only use the samples that didn't timeout
   // TODO: Maybe we want to include these and only filter the average?
   if (good_samples > 0) {
     // Get the average of all the samples
-    msg_->range = sum / good_samples;
-  } else {
-    // No good ones
-    msg_->range = infinity();
+    avg = sum / good_samples;
+  }
+
+  for (int i = 0; i < SONAR_LASER_RAYS; i++) {
+    msg_->ranges.data[i] = avg;
   }
 
   // Message is ready to publish
@@ -96,7 +103,7 @@ void PubSonar::calculate() {
   data_ready_ = true;
 
   // Reset trigger for next loop
-  _pub_sonar_triggered = false;
+  _pub_sonar_triggered[pin_trigger_] = false;
   sample_index_++;
 
   // Reset FIFO queue to get new readings

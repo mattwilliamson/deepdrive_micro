@@ -2,6 +2,7 @@
 #define PUB_SONAR_HPP
 
 #include <rmw_microros/rmw_microros.h>
+#include <sensor_msgs/msg/laser_scan.h>
 
 #include "HCSR04.cpp"
 #include "constants.h"
@@ -71,7 +72,7 @@ class PubSonar {
   rcl_publisher_t publisher_;    /**< The ROS publisher. */
   repeating_timer_t timer_;      /**< The repeating timer. */
   mutex_t lock_;                 /**< The mutex lock. */
-  sensor_msgs__msg__Range *msg_; /**< The sonar message. */
+  sensor_msgs__msg__LaserScan *msg_; /**< The sonar message. */
 
   uint pin_trigger_; /**< The trigger pin for the sonar sensor. */
   uint pin_echo_;    /**< The echo pin for the sonar sensor. */

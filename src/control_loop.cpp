@@ -53,7 +53,8 @@ void Node::spin_control_loop() {
     pub_joint_state->calculate();
     pub_wheel_speed->calculate();
     pub_battery_state->calculate();
-    pub_sonar->calculate();
+    pub_sonar_front->calculate();
+    pub_sonar_back->calculate();
 
 #ifndef LED_RING_ENABLED
     led_ring.off();

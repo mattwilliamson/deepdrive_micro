@@ -51,9 +51,12 @@ Node::Node() {
   pub_odom = new PubOdom(&node, &support, &allocator, motor_manager_);
   pub_battery_state = new PubBatteryState(&node, &support, &allocator, analog_sensors, buzzer);
   pub_wheel_speed = new PubWheelSpeed(&node, &support, &allocator, motor_manager_);
-  pub_sonar = new PubSonar(&node, &support, &allocator,
-                           SONAR_TRIGGER_PIN_FRONT, SONAR_ECHO_PIN_FRONT, SONAR_PUBLISH_RATE,
-                           SONAR_TOPIC_FRONT, SONAR_FRAME_FRONT);
+  pub_sonar_front = new PubSonar(&node, &support, &allocator,
+                                 SONAR_TRIGGER_PIN_FRONT, SONAR_ECHO_PIN_FRONT, SONAR_PUBLISH_RATE,
+                                 SONAR_TOPIC_FRONT, SONAR_FRAME_FRONT);
+  pub_sonar_back = new PubSonar(&node, &support, &allocator,
+                                SONAR_TRIGGER_PIN_BACK, SONAR_ECHO_PIN_BACK, SONAR_PUBLISH_RATE,
+                                SONAR_TOPIC_BACK, SONAR_FRAME_BACK);
 
   sub_cmd_vel = new SubCmdVel(&node, &support, &allocator, &executor, motor_manager_);
   sub_wheel_speed = new SubWheelSpeed(&node, &support, &allocator, &executor, motor_manager_);
@@ -98,7 +101,8 @@ Node::~Node() {
   delete pub_telemetry;
   delete pub_odom;
   delete pub_battery_state;
-  delete pub_sonar;
+  delete pub_sonar_front;
+  delete pub_sonar_back;
 
   delete sub_cmd_vel;
   delete sub_wheel_speed;

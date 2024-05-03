@@ -26,7 +26,6 @@ extern "C" {
 #include <sensor_msgs/msg/battery_state.h>
 #include <sensor_msgs/msg/imu.h>
 #include <sensor_msgs/msg/joint_state.h>
-#include <sensor_msgs/msg/range.h>
 }
 
 #include "config.h"

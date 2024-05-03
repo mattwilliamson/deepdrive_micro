@@ -58,7 +58,8 @@ class Node {
   PubJointState *pub_joint_state;
   PubBatteryState *pub_battery_state;
   PubWheelSpeed *pub_wheel_speed;
-  PubSonar *pub_sonar;
+  PubSonar *pub_sonar_front;
+  PubSonar *pub_sonar_back;
 
   SubCmdVel *sub_cmd_vel;
   SubWheelSpeed *sub_wheel_speed;
