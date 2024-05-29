@@ -18,7 +18,7 @@
 #endif
 
 static inline void put_pixel(uint32_t pixel_grb) {
-    pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
+    pio_sm_put_blocking(LED_RING_PIO, 0, pixel_grb << 8u);
 }
 
 static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {

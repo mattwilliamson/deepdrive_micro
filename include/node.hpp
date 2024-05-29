@@ -8,10 +8,12 @@ extern "C" {
 #include "led_status.h"
 #include "pico_uart_transports.h"
 #include "constants.h"
+#include "hardware/watchdog.h"
 }
 
 #include "analog_sensors.hpp"
 #include "led_ring.hpp"
+#include "led_ring_status.hpp"
 #include "motor.hpp"
 #include "status.hpp"
 #include "buzzer.hpp"
@@ -42,7 +44,7 @@ class Node {
   // 6 publisher)
   // TODO: Increment these memory handles
   // const size_t uRosHandles = 12 + RCLC_EXECUTOR_PARAMETER_SERVER_HANDLES;
-  const size_t uRosHandles = 20;
+  const size_t uRosHandles = 25;
 
   // rcl_init_options_t init_options;
   rcl_node_t node;
@@ -64,15 +66,16 @@ class Node {
   SubCmdVel *sub_cmd_vel;
   SubWheelSpeed *sub_wheel_speed;
 
-  LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
+  LEDRing& led_ring = LEDRingStatus::getInstance().getLEDRing();
   StatusManager status;
   AnalogSensors* analog_sensors;
   Buzzer* buzzer;
+  MotorManager *motor_manager_;
 
   // TODO: Do I need to publish trajectory_msgs__msg__JointTrajectoryPoint ?
 
   volatile bool render_led_ring = false;
-  volatile bool control_due = false;
+  volatile bool motors_due = false;
 
   repeating_timer_t timer_control;
   repeating_timer_t timer_led_ring;
@@ -103,6 +106,11 @@ class Node {
   // Run control loop in a separate core
   void spin_control_loop();
   int start_control_loop();
+  
+  void start_led_ring();
+
+  // Everything is started up
+  void startup_completed();
 
   /**
    * @brief Run main loop for pub/sub and other uROS stuff
@@ -120,7 +128,8 @@ class Node {
   // Top level main loop
   void spin();
 
-  MotorManager *motor_manager_;
+  // Turn off motors during timeout
+  void check_cmd_vel_timeout();
 
   // Watchdog
   void init_watchdog();

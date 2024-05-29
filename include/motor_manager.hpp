@@ -24,6 +24,11 @@ class MotorManager {
   void disable_motors();
 
   /**
+   * @brief Stops all the motors.
+   */
+  void stop_motors();
+
+  /**
    * @brief Enables all the motors.
    */
   void enable_motors();
@@ -40,6 +45,15 @@ class MotorManager {
    */
   std::vector<Motor*>& get_motors() {
     return motors_;
+  }
+
+  /**
+   * @brief Resets the pulse count for all motors.
+   */
+  void reset_motor_pulse_count() {
+    for (Motor* motor : motors_) {
+      motor->reset_pulses();
+    }
   }
 
  private:

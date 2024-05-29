@@ -59,7 +59,7 @@ sudo cp src/deepdrive_micro/deepdrive_micro.uf2 /mnt/sda1
 ## Run micro ros Agent
 ```sh
 mamba activate ros_env
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 -b 921600
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
 
 ros2 topic echo deepdrive_micro/pulses
 ```
@@ -115,6 +115,16 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Motor must be set to 0 for a couple seconds before moving
+- Turn off motor PWM when stopped for a period of time to avoid the beeping
+- Remove pulse counter hardware filters
+- Watchdog for restarts
+- Fix pins for led ring
+- Route pulse counter wires away from motors
+- Fix sonar mount
+- Holder for speaker
+- Remount jetson
+- Read IMU on interrupt to update orientation, but still publish same frequency
 - Convert sonar scan to LaserScan so Nav2 can use it?
 - Add frames to urdf for sonar
 - Emergency stop for twist mux - in case of cliffs or whatnot - publish std_msgs::Bool to /e_stop
@@ -124,7 +134,6 @@ front_right_wheel_velocity  89018
 - Sonar for front and back
 - Odom is off. check each source independently. might need to fix pulse counters somehow
 - need to tune PID controller under load
-- Watchdog for restarts
 - Base class for publishers
 - Speed up core0 with static memory https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
 - Mutexes don't work across cores. Use FIFO to tell core0 which step core1 is on: https://github.com/raspberrypi/pico-examples/blob/master/multicore/multicore_fifo_irqs/multicore_fifo_irqs.c

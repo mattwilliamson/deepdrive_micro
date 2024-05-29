@@ -26,6 +26,7 @@ void tone_init(tonegenerator_t *gen, uint8_t gpio){
     gen->channel = pwm_gpio_to_channel(gpio);
     gpio_init(gpio);
     gpio_set_function(gpio, GPIO_FUNC_PWM);
+    gpio_pull_down(gpio);
     pwm_set_chan_level(gen->slice, gen->channel, 2048);
     clock = clock_get_hz(clk_sys);
 }
@@ -38,10 +39,14 @@ void tone(tonegenerator_t *gen, int freq, uint16_t duration) {
     }
 }
 
-void melody(tonegenerator_t *gen, note_t *notes, int8_t repeat){
+void melody(tonegenerator_t *gen, note_t *notes, int16_t repeat){
+    if (gen->playing) {
+        stop_melody(gen);
+    }
+    
     melody_repeat = repeat;
     melody_index = 0;
-    melody_t mel;
+    melody_t mel = { .playing = false };
     mel.notes = notes;
     gen->mel = mel;
     gen->playing = true;
@@ -58,6 +63,7 @@ void set_rest_duration(uint16_t duration){
 
 void stop_tone(tonegenerator_t *gen){
     pwm_set_enabled(gen->slice, false);
+    pwm_set_gpio_level(gen->gpio, 0);
     gen->playing = false;
 }
 
@@ -65,6 +71,7 @@ void stop_melody(tonegenerator_t *gen){
     if (tone_a) cancel_alarm(tone_a);
     if (melody_a) cancel_alarm(melody_a);
     pwm_set_enabled(gen->slice, false);
+    pwm_set_gpio_level(gen->gpio, 0);
 }
 
 void _pwm_set_freq(tonegenerator_t *gen, float freq) {
@@ -78,8 +85,10 @@ void _tone_pwm_on(tonegenerator_t *gen, int freq){
     if(freq < NOTE_G1) {freq = REST;}
     else if(freq > NOTE_FS9) {freq = REST;}
     pwm_set_enabled(gen->slice, false);
+    pwm_set_gpio_level(gen->gpio, 0);
     _pwm_set_freq(gen, freq);
     pwm_set_enabled(gen->slice, true);
+    pwm_set_gpio_level(gen->gpio, 5000);
     gen->playing = true;
 }
 
@@ -99,7 +108,7 @@ void _melody_step(tonegenerator_t *gen){
         }
         
     } else {
-        int8_t measure = note.measure;
+        int16_t measure = note.measure;
         int whole_note = (60000 * 4) / tempo;
         int duration = whole_note / abs(measure);
         if (measure < 0) { // Dotted note
@@ -119,6 +128,7 @@ void _melody_tone(tonegenerator_t *gen, int freq, uint16_t duration) {
 static int64_t _tone_complete(alarm_id_t id, void *user_data) {
     tonegenerator_t *gen = (tonegenerator_t*) user_data;
     pwm_set_enabled(gen->slice, false);
+    pwm_set_gpio_level(gen->gpio, 0);
     gen->playing = false;
     return 0;
 }
@@ -126,6 +136,7 @@ static int64_t _tone_complete(alarm_id_t id, void *user_data) {
 static int64_t _melody_note_complete(alarm_id_t id, void *user_data) {
     tonegenerator_t *gen = (tonegenerator_t*) user_data;
     pwm_set_enabled(gen->slice, false);
+    pwm_set_gpio_level(gen->gpio, 0);
 
     if(rest_duration > 0){
         if (rest_a) cancel_alarm(rest_a);

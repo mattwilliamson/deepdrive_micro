@@ -1,7 +1,29 @@
 #include "node.hpp"
 
+LEDRing led_ring = LEDRing(LED_RING_PIN, LED_RING_PIO, LED_RING_NUM_PIXELS);
+
 Node::Node() {
   rcl_ret_t error_code;
+
+  // Buzzer for audio feedback
+  buzzer = new Buzzer(PIN_BUZZER);
+  // buzzer->stop();
+
+#ifdef WATCHDOG_ENABLED
+  if (watchdog_caused_reboot()) {
+    // printf("Rebooted by Watchdog!\r\n");
+    status.set(Status::Rebooted);
+    // buzzer->stop();
+    buzzer->playTune(Buzzer::Tune::REBOOTED);
+    sleep_ms(10000);
+    buzzer->stop();
+  }
+  // Enable the watchdog, requiring the watchdog to be updated every 10000ms or the chip will reboot
+  watchdog_enable(WATCHDOG_TIMEOUT, false);
+#endif
+
+  buzzer->playTune(Buzzer::Tune::STARTUP);
+
   status.set(Status::Connecting);
 
   // TODO: Status booting, update after ping to connecting
@@ -22,25 +44,20 @@ Node::Node() {
   rclc_executor_init(&executor, &support.context, uRosHandles, &allocator);
 
   // stdio_init_all(); // Called by uros
-  init_watchdog();
-
-  // Synchronize time with the agent
-  rmw_uros_sync_session(5000);
+  // init_watchdog();
 
   // TODO: Error handling for all the init functions
 
   // LED Ring to show status
   led_ring.start();
   led_status_init();
+  start_led_ring();
 
   // Params server (currently not working)
   // init_param_server();
 
   // Battery sensor & temperature sensor
   analog_sensors = new AnalogSensors();
-
-  // Buzzer for audio feedback
-  buzzer = new Buzzer(BUZZER_PIN);
 
   motor_manager_ = new MotorManager();
 
@@ -51,17 +68,27 @@ Node::Node() {
   pub_odom = new PubOdom(&node, &support, &allocator, motor_manager_);
   pub_battery_state = new PubBatteryState(&node, &support, &allocator, analog_sensors, buzzer);
   pub_wheel_speed = new PubWheelSpeed(&node, &support, &allocator, motor_manager_);
+
+#ifdef SONAR_ENABLED
   pub_sonar_front = new PubSonar(&node, &support, &allocator,
                                  SONAR_TRIGGER_PIN_FRONT, SONAR_ECHO_PIN_FRONT, SONAR_PUBLISH_RATE,
                                  SONAR_TOPIC_FRONT, SONAR_FRAME_FRONT);
   pub_sonar_back = new PubSonar(&node, &support, &allocator,
                                 SONAR_TRIGGER_PIN_BACK, SONAR_ECHO_PIN_BACK, SONAR_PUBLISH_RATE,
                                 SONAR_TOPIC_BACK, SONAR_FRAME_BACK);
+#endif
 
   sub_cmd_vel = new SubCmdVel(&node, &support, &allocator, &executor, motor_manager_);
   sub_wheel_speed = new SubWheelSpeed(&node, &support, &allocator, &executor, motor_manager_);
+}
 
+void Node::startup_completed() {
   status.set(Status::Connected);
+  buzzer->playTune(Buzzer::Tune::POSITIVE);
+  motor_manager_->reset_motor_pulse_count();
+
+  // Motors will be enabled when we receive a cmd_vel call
+  // motor_manager_->enable_motors();
 }
 
 void Node::spin() {
@@ -101,8 +128,11 @@ Node::~Node() {
   delete pub_telemetry;
   delete pub_odom;
   delete pub_battery_state;
+
+#ifdef SONAR_ENABLED
   delete pub_sonar_front;
   delete pub_sonar_back;
+#endif
 
   delete sub_cmd_vel;
   delete sub_wheel_speed;

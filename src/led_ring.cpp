@@ -14,6 +14,9 @@ void LEDRing::start() {
   int sm = pio_claim_unused_sm(pio, false);
   uint offset = pio_add_program(pio, &ws2812_program);
   ws2812_program_init(pio, sm, offset, pin, 800000, LED_RING_IS_RGBW);
+
+  // Set Default to yellow
+  renderStatus(Status::Init);
 }
 
 void LEDRing::resetAnimation() {
@@ -44,7 +47,7 @@ void LEDRing::renderStatus(Status status) {
   switch (status) {
     case Status::Connecting:
       // fadeW(0x66, t);
-      spin(0x33, 0x66, 0x99, t / 4);
+      spin(0x33, 0x66, 0x99, t);
       // roll(0x33, 0x66, 0x99, t);
       break;
     case Status::Connected:

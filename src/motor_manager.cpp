@@ -16,6 +16,12 @@ void MotorManager::disable_motors() {
   }
 }
 
+void MotorManager::stop_motors() {
+  for (auto &motor : motors_) {
+    motor->stop();
+  }
+}
+
 void MotorManager::enable_motors() {
   for (auto &motor : motors_) {
     motor->enable();

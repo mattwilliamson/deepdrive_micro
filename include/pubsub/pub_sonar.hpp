@@ -65,13 +65,13 @@ class PubSonar {
   ~PubSonar();
 
  private:
-  rcl_node_t *node_;             /**< The ROS node. */
-  rcl_allocator_t *allocator_;   /**< The allocator for memory management. */
-  rclc_support_t *support_;      /**< The ROS support object. */
-  rclc_executor_t *executor_;    /**< The ROS executor. */
-  rcl_publisher_t publisher_;    /**< The ROS publisher. */
-  repeating_timer_t timer_;      /**< The repeating timer. */
-  mutex_t lock_;                 /**< The mutex lock. */
+  rcl_node_t *node_;                 /**< The ROS node. */
+  rcl_allocator_t *allocator_;       /**< The allocator for memory management. */
+  rclc_support_t *support_;          /**< The ROS support object. */
+  rclc_executor_t *executor_;        /**< The ROS executor. */
+  rcl_publisher_t publisher_;        /**< The ROS publisher. */
+  repeating_timer_t timer_;          /**< The repeating timer. */
+  mutex_t lock_;                     /**< The mutex lock. */
   sensor_msgs__msg__LaserScan *msg_; /**< The sonar message. */
 
   uint pin_trigger_; /**< The trigger pin for the sonar sensor. */
@@ -80,7 +80,8 @@ class PubSonar {
   HCSR04 *sonar_; /**< The sonar sensor object. */
 
   int16_t status_;  /**< The status of the sonar publisher. */
-  bool data_ready_; /**< Flag indicating if data is ready. */
+  bool started_ = false;    /**< Flag indicating if the sonar publisher has started. */
+  bool data_ready_ = false; /**< Flag indicating if data is ready. */
 
   // Really for debugging
   double samples_[SONAR_SAMPLES]; /**< The buffer to store the sonar samples. */

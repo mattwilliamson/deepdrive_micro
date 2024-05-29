@@ -17,7 +17,7 @@ extern "C" {
 
 typedef struct note_t {
     float freq;
-    int8_t measure;
+    int16_t measure;
 } note_t;
 
 typedef struct melody_t {     
@@ -35,7 +35,7 @@ typedef struct tonegenerator_t {
 
 void tone_init(tonegenerator_t *gen, uint8_t gpio);
 void tone(tonegenerator_t *gen, int freq, uint16_t duration);
-void melody(tonegenerator_t *gen, note_t *notes, int8_t repeat);
+void melody(tonegenerator_t *gen, note_t *notes, int16_t repeat);
 
 void set_tempo(uint16_t bpm);
 void set_rest_duration(uint16_t duration);

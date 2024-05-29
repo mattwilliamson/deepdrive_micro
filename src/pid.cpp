@@ -33,10 +33,11 @@ double PIDController::calculate(double dt, double pv) {
   double output = Pout + Iout + Dout;
 
   // Limit to max/min
-  if (output > max_)
+  if (output > max_) {
     output = max_;
-  else if (output < min_)
+  } else if (output < min_) {
     output = min_;
+  }
 
   // Save error to previous error
   pre_error_ = error;

@@ -18,16 +18,17 @@ extern "C" {
  * @brief Represents the possible statuses of a system.
  */
 enum class Status {
-    Init,         /**< Initialization status */
-    Connecting,   /**< Connecting status */
-    Connected,    /**< Connected status */
-    Active,       /**< Active status */
-    Executing,    /**< Executing status */
-    Success,      /**< Success status */
-    Warning,      /**< Warning status */
-    Error,        /**< Error status */
-    ErrorIMU,     /**< Error IMU status */
-    Rebooted      /**< Rebooted status */
+    Init,                   /**< Initialization status */
+    Connecting,             /**< Connecting status */
+    Connected,              /**< Connected status */
+    Active,                 /**< Active status */
+    Executing,              /**< Executing status */
+    Success,                /**< Success status */
+    Warning,                /**< Warning status */
+    Error,                  /**< Error status */
+    ErrorIMU,               /**< Error IMU status */
+    Rebooted,               /**< Rebooted status */
+    TimeNotSynchronized,    /**< Time not synchronized status */
 };
 
 /**
@@ -79,8 +80,14 @@ class StatusManager {
         return errorString;
     }
 
- private:
-    std::string errorString; /**< The error string associated with the current status. */
+    /**
+     * @brief Removes a specific status if it is set.
+     * @param status The status to remove.
+     */
+    void removeStatus(Status status);
+
+private:
+    std::string errorString = ""; /**< The error string associated with the current status. */
 
     StatusManager(const StatusManager&) = delete;
     StatusManager& operator=(const StatusManager&) = delete;

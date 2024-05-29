@@ -42,7 +42,7 @@ IMU::IMU(i2c_inst_t i2c, uint8_t address, uint8_t addressMag, int sda, int scl, 
   const FusionAhrsSettings settings = {
       .convention = FusionConventionNwu,
       .gain = 0.5f,
-      .gyroscopeRange = 2000.0f, /* replace this with actual gyroscope range in degrees/s */
+      .gyroscopeRange = 250.0f, /* replace this with actual gyroscope range in degrees/s */
       .accelerationRejection = 10.0f,
       .magneticRejection = 10.0f,
       .recoveryTriggerPeriod = 5 * IMU_LOOP_HZ, /* 5 seconds */

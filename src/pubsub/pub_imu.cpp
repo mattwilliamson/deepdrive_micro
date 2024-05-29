@@ -103,12 +103,14 @@ void PubImu::calculate() {
 }
 
 void PubImu::publish() {
+#ifdef IMU_PUBLISH
   mutex_enter_blocking(&lock_);
   if (data_ready_) {
     status_ = rcl_publish(&publisher_, msg_, NULL);
     data_ready_ = false;
   }
   mutex_exit(&lock_);
+#endif
 }
 
 PubImu::~PubImu() {

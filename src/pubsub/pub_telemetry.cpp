@@ -93,7 +93,7 @@ void PubTelemetry::calculate() {
   //   motor_manager_->disable_motors();
   // } else {
   // StatusManager::getInstance().set(Status::Error);
-  motor_manager_->enable_motors();
+  // motor_manager_->enable_motors();
   // }
 
   diagnostic_msgs__msg__DiagnosticStatus *diag = &msg_->status.data[0];
@@ -110,12 +110,26 @@ void PubTelemetry::calculate() {
   itoa(get_free_heap(), diag->values.data[Diag::MEM_FREE].value.data, 10);
   itoa(get_used_heap(), diag->values.data[Diag::MEM_USED].value.data, 10);
 
-  // TODO: set error string from status
+  // Update status from status manager
+  StatusManager &status_manager = StatusManager::getInstance();
+
+  if (!rmw_uros_epoch_synchronized()) {
+    status_manager.set(Status::TimeNotSynchronized);
+    status_manager.setErrorString("Time not synchronized");
+  } else {
+    status_manager.removeStatus(Status::TimeNotSynchronized);
+  }
+
   diag->level = diagnostic_msgs__msg__DiagnosticStatus__OK;
-  diag->message.data = const_cast<char *>("OK");
+  setDiagMessage(diag, "OK");
+
+  Status status = status_manager.get();
+  std::string status_message = status_manager.getErrorString();
 
   // TODO: Set status string
-  switch (StatusManager::getInstance().get()) {
+  diag->message.data = status_message.data();
+
+  switch (status) {
     case Status::Connecting:
       diag->level = diagnostic_msgs__msg__DiagnosticStatus__WARN;
       break;
@@ -127,16 +141,11 @@ void PubTelemetry::calculate() {
       break;
     case Status::Error:
       diag->level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
-      diag->message.data = const_cast<char *>("Error");
+      setDiagMessage(diag, status_message.data());
       break;
     case Status::Rebooted:
       diag->level = diagnostic_msgs__msg__DiagnosticStatus__ERROR;
       break;
-  }
-
-  // TODO: Send Status
-  if (!rmw_uros_epoch_synchronized()) {
-    diag->message.data = const_cast<char *>("Time not synchronized");
   }
 
   // Set timestamp
@@ -146,6 +155,17 @@ void PubTelemetry::calculate() {
 
   // Don't publish a transform. robot_localization will fuse our estimates and do that
   mutex_exit(&lock_);
+}
+
+void PubTelemetry::setDiagMessage(diagnostic_msgs__msg__DiagnosticStatus *diag, const char* status_message) {
+  // static const std::string padding(DIAGNOSTIC_MESSAGE_LEN, ' ');
+  // strncpy(diag->message.data, padding.data(), DIAGNOSTIC_MESSAGE_LEN);
+  // strncpy(diag->message.data, status_message, strlen(status_message));
+  // for (int i = 0; i < DIAGNOSTIC_MESSAGE_LEN; i++) {
+  //   diag->message.data[i] = ' ';
+  // }
+  // diag->message.size = strlen(status_message);
+  // strncpy(diag->message.data, status_message, diag->message.size);
 }
 
 void PubTelemetry::publish() {

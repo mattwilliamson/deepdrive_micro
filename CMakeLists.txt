@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 # RP2040 repeating timer heap min=0, max=255, default=16
-add_compile_definitions(PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERS=32)
+add_compile_definitions(PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERS=40)
 
 pico_sdk_init()
 

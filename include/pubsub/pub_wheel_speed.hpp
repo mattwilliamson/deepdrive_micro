@@ -62,7 +62,7 @@ class PubWheelSpeed {
   repeating_timer_t timer_; /**< The repeating timer. */
   mutex_t lock_; /**< The mutex lock. */
 
-  control_msgs__msg__MecanumDriveControllerState* msg_; /**< The wheel speed message. */
+  sensor_msgs__msg__JointState* msg_; /**< The wheel speed message. */
 
   MotorManager *motor_manager_; /**< The motor manager object. */
 

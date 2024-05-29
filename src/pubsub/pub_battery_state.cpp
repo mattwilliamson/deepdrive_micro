@@ -32,6 +32,7 @@ PubBatteryState::PubBatteryState(rcl_node_t *node, rclc_support_t *support, rcl_
 
   data_ready_ = false;
 
+  // status_ = rclc_publisher_init_default(
   status_ = rclc_publisher_init_default(
       &publisher_, node_,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState),
@@ -58,8 +59,7 @@ void PubBatteryState::calculate() {
     msg_->power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
     msg_->present = true;
   } else {
-    msg_->power_supply_status =
-        sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_UNKNOWN;
+    msg_->power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_UNKNOWN;
     msg_->present = false;
   }
 
@@ -87,21 +87,23 @@ void PubBatteryState::publish() {
 void PubBatteryState::checkBuzzer() {
   // TODO: Make this a bit more generic. maybe an event system?
   
-  if (msg_->percentage < BUZZER_BATTERY_ERROR) {
+  if (msg_->voltage > 0 && msg_->percentage < BUZZER_BATTERY_ERROR) {
     if (rmw_uros_epoch_nanos() - buzzer_last_played_ > BUZZER_WARN_INTERVAL) {
       buzzer_->playTune(Buzzer::Tune::ERROR);
       buzzer_last_played_ = rmw_uros_epoch_nanos();
       StatusManager::getInstance().set(Status::Error);
+      StatusManager::getInstance().setErrorString("Battery Critically Low!");
     }
 
-  } else if (msg_->percentage < BUZZER_BATTERY_WARN) {
+  } else if (msg_->voltage > 0 && msg_->percentage < BUZZER_BATTERY_WARN) {
     if (rmw_uros_epoch_nanos() - buzzer_last_played_ > BUZZER_WARN_INTERVAL) {
       buzzer_->playTune(Buzzer::Tune::WARNING);
       buzzer_last_played_ = rmw_uros_epoch_nanos();
       StatusManager::getInstance().set(Status::Warning);
+      StatusManager::getInstance().setErrorString("Battery Low!");
     }
   } else {
-    buzzer_->stop();
+    // buzzer_->stop();
     // StatusManager::getInstance().set(Status::Active);
   }
 }

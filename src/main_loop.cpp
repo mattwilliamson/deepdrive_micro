@@ -18,6 +18,7 @@ int Node::start_main_loop() {
   if (error_code != RCL_RET_OK) {
     return error_code;
   }
+  StatusManager::getInstance().set(Status::Connected);
   return 0;
 }
 
@@ -28,13 +29,16 @@ void Node::spin_main_loop(rcl_timer_t *timer, int64_t last_call_time) {
   pub_telemetry->set_core_start(core);
 
   pub_odom->publish();
-  pub_imu->publish();
   pub_telemetry->publish();
-  pub_joint_state->publish();
   pub_wheel_speed->publish();
   pub_battery_state->publish();
+  pub_joint_state->publish();
+  pub_imu->publish();
+
+#ifdef SONAR_ENABLED
   pub_sonar_front->publish();
   pub_sonar_back->publish();
+#endif
 
   pub_telemetry->set_core_stop(core);
 }

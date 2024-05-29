@@ -11,13 +11,19 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "constants.h"
+
 // #define NDEBUG
 
 // If this is defined, don't actually send motor commands, just simulate them and publish odom
 // Good for testing or if we have a different source of odometry
-// #define ODOM_SIMULATE
+// #define SIMULATE_MOTORS
 
-// This is for open loop control, where we just set the motor speed and don't use encoders
+// If this is defined, don't actually send motor commands. Useful for checking pulses.
+// #define DISABLE_MOTORS
+
+// This is for open loop control, where we just set the motor speed and don't use pulse encoders
+// TODO: This results in a non-zero speed signal for some reason that loops back into the PID controller
 // #define ODOM_OPEN_LOOP
 
 // TODO: Put covariance here
@@ -42,12 +48,19 @@ static const int CENTI_METERS = 100.0;
 // Comment out to disable
 // #define WATCHDOG_ENABLED
 
+// Reboot the board if we haven't had activity for a while, e.g. no uros agent
+#define WATCHDOG_TIMEOUT 30000  // milliseconds
+
+// Time to wait after connecting to agent to consider startup complete
+// Pulses will be reset to 0
+#define STARTUP_DELAY 2000 // milliseconds
+
 // ----------------------------------
 // START LED RING
 // ----------------------------------
 // GPIO 22
 
-#define LED_RING_ENABLED 1
+#define LED_RING_ENABLED
 
 #ifdef PICO_DEFAULT_WS2812_PIN
 #define LED_RING_PIN PICO_DEFAULT_WS2812_PIN
@@ -60,7 +73,7 @@ static const int CENTI_METERS = 100.0;
 
 #define LED_RING_PIO pio0
 
-#define LED_RING_HZ 10
+#define LED_RING_HZ 100
 
 // END LED RING
 // ----------------------------------
@@ -93,7 +106,13 @@ static const int CENTI_METERS = 100.0;
 // ----------------------------------
 
 // Time since last cmd_vel message before stopping the robot
-#define CMD_VEL_TIMEOUT 1 * NANOSECONDS
+#define CMD_VEL_TIMEOUT 10 * NANOSECONDS
+
+// Time since last cmd_vel message before turning off the motors completely
+#define CMD_VEL_TIMEOUT_DISABLE 60 * NANOSECONDS
+
+// Time to wait for motors and stay at neutral speed after enabling (3s)
+#define MOTOR_NEUTRAL_TIME 2 * NANOSECONDS
 
 // Meters per second squared
 #define MAX_ACCELERATION_LINEAR .1
@@ -121,6 +140,37 @@ static const int CENTI_METERS = 100.0;
 #define MOTOR_LEFT 0
 #define MOTOR_RIGHT 1
 
+// 1000 us
+#define MOTOR_DUTY_CYCLE_MIN      490
+// 1500 us
+#define MOTOR_DUTY_CYCLE_CENTER   735
+// 2000 us
+#define MOTOR_DUTY_CYCLE_MAX      980
+
+// How many pulses are output for one revolution of the motor
+  // 69579 / 50 = 1,391.58
+#define MOTOR_PULSES_PER_REV      1392
+
+// TODO: There is some backlash in the motor, so we need to add some deadband
+
+// Size of the wheels
+// 89 * 3.14159 = 280.5 mm per revolution -> .281 meters/rev
+#define WHEEL_DIAMETER_MM         89
+
+// Set max speed to about 1.124 m/s (4 revs per second)
+// #define MOTOR_MAX_SPEED_PPS       4 * MOTOR_PULSES_PER_REV
+// Set max speed to about .281 m/s (1 revs per second)
+#define MOTOR_MAX_SPEED_PPS       MOTOR_PULSES_PER_REV
+
+// Don't accept values this high since they are impossible
+#define MOTOR_MAX_SPEED_FILTER    5 * MOTOR_PULSES_PER_REV
+
+// How far apart the wheels are in mm from left to right innermost edge
+#define WHEEL_BASE_MM             240
+
+// Multiplier to adjust the wheel base to compensate for slippage
+#define WHEEL_BASE_COEFFICIENT    1.0
+
 // END MOTORS
 // ----------------------------------
 
@@ -138,6 +188,13 @@ static const int CENTI_METERS = 100.0;
 
 #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
 // #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE
+
+// Pulses less than this will be ignore as noise
+#define ENCODER_NOISE_THRESHOLD 3
+
+// How many samples to keep and average out
+// Might affect PID_KP macro below
+#define ENCODER_PULSE_BUFFER 20
 
 // END WHEEL ENCODER PULSE COUNTER
 // ----------------------------------
@@ -157,18 +214,20 @@ static const int CENTI_METERS = 100.0;
 // #define PID_KD 0.2
 
 // Proportional
-// #define PID_KP (0.02 * CONTROL_LOOP_HZ)
-#define PID_KP (0.01 * CONTROL_LOOP_HZ)
-// #define PID_KP 0.019 * CONTROL_LOOP_HZ
+#define PID_KP .08
+// #define PID_KP 0.01
+// #define PID_KP 0.019
 
 // Integral
-#define PID_KI (0.002 * CONTROL_LOOP_HZ)
-// #define PID_KI (0.0015 * CONTROL_LOOP_HZ)
-// #define PID_KI (0.002 * CONTROL_LOOP_HZ)
+// #define PID_KI 0
+#define PID_KI 0.07
+// #define PID_KI 0.0015
+// #define PID_KI 0.002
 
 // Derivative
-#define PID_KD (0.01 * CONTROL_LOOP_HZ)
-// #define PID_KD (0.000 * CONTROL_LOOP_HZ)
+// #define PID_KD 0
+#define PID_KD 0.02
+// #define PID_KD 0.000
 
 
 
@@ -200,7 +259,8 @@ static const int CENTI_METERS = 100.0;
 // START IMU
 // ----------------------------------
 
-#define IMU_ENABLED 1
+// #define IMU_PUBLISH
+// #define IMU_ENABLED
 #define IMU_I2C_SPEED 400 * 1000
 #define IMU_I2C_SDA 4
 #define IMU_I2C_SCL 5
@@ -232,8 +292,8 @@ static const int CENTI_METERS = 100.0;
 // START BUZZER
 // ----------------------------------
 
-#define BUZZER_ENABLED 1
-#define BUZZER_PIN 17
+// #define BUZZER_ENABLED
+#define PIN_BUZZER 17
 
 // Percent to start warning beeps at
 #define BUZZER_BATTERY_WARN 20.0
@@ -252,15 +312,16 @@ static const int CENTI_METERS = 100.0;
 // START SONAR
 // ----------------------------------
 
-// TODO: Actually use this macro
-#define SONAR_ENABLED 1
+// #define SONAR_ENABLED
+
+#define SONAR_PIO pio1
 
 #define SONAR_SENSORS 2
 
-#define SONAR_TRIGGER_PIN_FRONT 21
-#define SONAR_ECHO_PIN_FRONT 20
-#define SONAR_TRIGGER_PIN_BACK 19
-#define SONAR_ECHO_PIN_BACK 18
+#define SONAR_TRIGGER_PIN_FRONT     21
+#define SONAR_ECHO_PIN_FRONT        20
+#define SONAR_TRIGGER_PIN_BACK      19
+#define SONAR_ECHO_PIN_BACK         18
 
 // Since a small object will cause a bounce, only use closes ranged objects for navigation
 // #define SONAR_MAX_DISTANCE 4.0f  // meters

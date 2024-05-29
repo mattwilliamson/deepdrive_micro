@@ -79,7 +79,7 @@ class SubCmdVel {
   bool data_ready_; /**< Flag indicating if new data is ready. */
   geometry_msgs__msg__Twist *msg_; /**< Received cmd_vel message. */
   geometry_msgs__msg__Twist *prev_msg_; /**< Received cmd_vel message. */
-  int64_t last_message_time_; /**< Timestamp of the last received message. */
+  int64_t last_message_time_ = 0; /**< Timestamp of the last received message. */
   
 
   /**

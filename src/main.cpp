@@ -28,6 +28,10 @@ void RCCHECK(rcl_ret_t error_code) {
   }
 }
 
+int64_t post_startup(alarm_id_t id, void *user_data) {
+  Node::getInstance().startup_completed();
+  return 0;
+}
 
 int main() {
   stdio_init_all();
@@ -48,12 +52,24 @@ int main() {
 
   rcl_ret_t error_code;
 
+  // Force node to initialize
+  Node::getInstance();
+
+  watchdog_update();
+
   // Wait for agent successful ping for 2 minutes.
   error_code = rmw_uros_ping_agent(UROS_TIMEOUT, UROS_ATTEMPTS);
   RCCHECK(error_code);
+  
+  // Synchronize time with the agent
+  rmw_uros_sync_session(5000);
+
+  // Reset motor pulse count in case there were any pulses counted before the control loop started
+  assert(add_alarm_in_ms(STARTUP_DELAY, post_startup, NULL, true));
 
   // Start control loop and main loop
-  Node::getInstance().spin();
+  Node &node_instance = Node::getInstance();
+  node_instance.spin();
 
   return 0;
 }

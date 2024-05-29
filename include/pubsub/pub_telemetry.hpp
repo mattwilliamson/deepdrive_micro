@@ -105,6 +105,9 @@ class PubTelemetry {
    * @return True if successful, false otherwise.
    */
   static bool trigger(repeating_timer_t *rt);
+  
+  void setDiagMessage(diagnostic_msgs__msg__DiagnosticStatus *diag, const char *status_message);
+  // TODO: Overload for cstring?
 };
 
 #endif  // PUB_TELEMETRY_HPP

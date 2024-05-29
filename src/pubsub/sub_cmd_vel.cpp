@@ -50,23 +50,23 @@ void SubCmdVel::callback(const geometry_msgs__msg__Twist *msg) {
   double z = msg->angular.z;
 
   // Limit the acceleration with MAX_ACCELERATION_LINEAR and MAX_ACCELERATION_ROTATION
-  int64_t elapsed_ns = rmw_uros_epoch_nanos() - last_message_time_;
-  double delta_x = x - prev_msg_->linear.x;
-  double delta_z = z - prev_msg_->angular.z;
-  double max_lin = MAX_ACCELERATION_LINEAR * (elapsed_ns / 1e9);
-  double max_rot = MAX_ACCELERATION_ROTATION * (elapsed_ns / 1e9);
+  // int64_t elapsed_ns = rmw_uros_epoch_nanos() - last_message_time_;
+  // double delta_x = x - prev_msg_->linear.x;
+  // double delta_z = z - prev_msg_->angular.z;
+  // double max_lin = MAX_ACCELERATION_LINEAR * (elapsed_ns / 1e9);
+  // double max_rot = MAX_ACCELERATION_ROTATION * (elapsed_ns / 1e9);
 
-  if (delta_x > max_lin) {
-    x = prev_msg_->linear.x + max_lin;
-  } else if (delta_x < -max_lin) {
-    x = prev_msg_->linear.x - max_lin;
-  }
+  // if (delta_x > max_lin) {
+  //   x = prev_msg_->linear.x + max_lin;
+  // } else if (delta_x < -max_lin) {
+  //   x = prev_msg_->linear.x - max_lin;
+  // }
 
-  if (delta_z > max_rot) {
-    z = prev_msg_->angular.z + max_rot;
-  } else if (delta_z < -max_rot) {
-    z = prev_msg_->angular.z - max_rot;
-  }
+  // if (delta_z > max_rot) {
+  //   z = prev_msg_->angular.z + max_rot;
+  // } else if (delta_z < -max_rot) {
+  //   z = prev_msg_->angular.z - max_rot;
+  // }
 
   // Commanded linear velocity for each motor side in m/s
   // double left = (x - (cos(z) * wheel_separation / 2.0));
@@ -75,6 +75,10 @@ void SubCmdVel::callback(const geometry_msgs__msg__Twist *msg) {
   double right = x + (wheel_separation * z);
 
   auto motors = motor_manager_->get_motors();
+  
+  for (const auto& motor : motors) {
+    motor->enable();
+  }
 
   // Set the target speed for each motor
   motors[IDX_MOTOR_FRONT_LEFT]->setTargetSpeedMeters(left);

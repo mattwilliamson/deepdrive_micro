@@ -6,13 +6,17 @@
 #include <limits>
 #include <map>
 
+#include <rmw_microros/rmw_microros.h>
+
 extern "C" {
 #include "config.h"
 #include "hardware/pwm.h"
 #include "pico/stdlib.h"
+#include "config.h"
 }
 
 #include "pid.hpp"
+#include "ring_buffer.hpp"
 
 using Micrometers = int64_t;
 using Meters = double;
@@ -44,34 +48,24 @@ static volatile uint32_t pulse_count_map[30] = {};
 class Motor {
  public:
   // 1000 us
-  static const DutyCycle DUTY_CYCLE_MIN = 490;
+  static const DutyCycle DUTY_CYCLE_MIN = MOTOR_DUTY_CYCLE_MIN;
   // 1500 us
-  static const DutyCycle DUTY_CYCLE_CENTER = 735;
+  static const DutyCycle DUTY_CYCLE_CENTER = MOTOR_DUTY_CYCLE_CENTER;
   // 2000 us
-  static const DutyCycle DUTY_CYCLE_MAX = 980;
+  static const DutyCycle DUTY_CYCLE_MAX = MOTOR_DUTY_CYCLE_MAX;
 
   // diameter of the wheel in micrometers
-  static const Micrometers WHEEL_DIAMETER = 89 * MICRO_METERS / MILLI_METERS;
+  static const Micrometers WHEEL_DIAMETER = WHEEL_DIAMETER_MM * MICRO_METERS / MILLI_METERS;
   static const Micrometers WHEEL_RADIUS = WHEEL_DIAMETER / 2.0;
-  // 89 * 3.14159 = 280.5 mm per revolution -> .281 meters/rev
-
-  // Since this is a skid-steer, we will lose some distance when turning
-  // counteract by making wheel base wider
-  static constexpr float WHEEL_BASE_COEFFICIENT = 1.5;
 
   // distance between left and right wheels
-  static constexpr Micrometers WHEEL_BASE = WHEEL_BASE_COEFFICIENT * 240 * MICRO_METERS / MILLI_METERS;
-
-  // TODO: There is some backlash in the motor, so we need to add some deadband
-  // (~696-688=8 pulses) Forward: 34826/50 = 696 | 93156/127 = 734 | 34942/50.2
-  // = 696 | 13988/20.1 = 695.5 Reverse: -34727/50.4 = -689 | -27862/40.5 =
-  // -687
+  static constexpr Micrometers WHEEL_BASE = WHEEL_BASE_COEFFICIENT * WHEEL_BASE_MM * MICRO_METERS / MILLI_METERS;
 
   // Pulse count per revolution of the motor
-  static const Pulses PULSES_PER_REV = 696 * 2;  // 2x for rising and falling edge
+  static const Pulses PULSES_PER_REV = MOTOR_PULSES_PER_REV;  // 2x for rising and falling edge
 
   // Pulses per second at full throttle (of the slowest motor)
-  static const Pulses MAX_SPEED_PPS = 1450 * 2;  // 2x for rising and falling edge
+  static const Pulses MAX_SPEED_PPS = MOTOR_MAX_SPEED_PPS;  // 2x for rising and falling edge
 
   // Micrometers per revolution of the motor
   static constexpr Micrometers UM_PER_REV = WHEEL_DIAMETER * M_PI;
@@ -111,6 +105,14 @@ class Motor {
    * @brief Disable the motor.
    */
   void disable();
+
+  /**
+   * @brief Reset the pulse count of the motor to zero.
+   */
+  void reset_pulses() {
+    pulses_ = 0;
+    pidController_->reset();
+  }
 
   /**
    * @brief Get the side of the motor.
@@ -211,6 +213,14 @@ class Motor {
     return um / MICRO_METERS;
   }
 
+  /**
+   * @brief Get the current actual speed of the motor in pulses per second.
+   * @return The speed of the motor in pulses per second.
+   */
+  Pulses getSpeed() {
+    return speed_;
+  }
+
   Radians getPosition() {
     // TODO: Calculate upon update and just read
     return pulsesToRadians(pulses_);
@@ -304,18 +314,23 @@ class Motor {
   void updateMotorOutput();
 
  private:
-  int pin_;              // Pin number of the motor
-  int encoderPin_;       // Pin number of the motor encoder
-  int16_t speed_;        // current speed pulses/sec
-  int16_t pulses_loop_;  // current speed pulses/loop
-  int16_t speedSignal_;  // current speed signal pulses/sec
-  int16_t targetSpeed_;  // desired speed of the motor pulses/sec
-  int64_t pulses_;       // Number of pulses counted by the motor total
-  int dutyCycle_;        // PWM duty cycle
-  uint slice_;           // PWM slice number
-  uint channel_;         // PWM channel number
-  int8_t direction_;     // Direction of the motor (1, 0, -1)
-  Side side_;            // Which side the motor is on
+  int pin_;                                                 // Pin number of the motor
+  int encoderPin_;                                          // Pin number of the motor encoder
+  int64_t speed_;                                           // current speed pulses/sec
+  int64_t pulses_loop_;                                     // current speed pulses/loop
+  int64_t speedSignal_;                                     // current speed signal pulses/sec
+  int64_t targetSpeed_;                                     // desired speed of the motor pulses/sec
+  int64_t pulses_;                                          // Number of pulses counted by the motor total
+  int dutyCycle_;                                           // PWM duty cycle
+  uint slice_;                                              // PWM slice number
+  uint channel_;                                            // PWM channel number
+  int8_t direction_;                                        // Direction of the motor (1, 0, -1)
+  Side side_;                                               // Which side the motor is on
+  RingBuffer<uint64_t, ENCODER_PULSE_BUFFER> pulseBuffer_;  // Buffer to store pulse counts
+  uint64_t lastRead_;                                       // Last time the encoder was read
+
+  int64_t enabled_time_;
+  bool enabled_ = false;
 };
 
 #endif  // MOTOR_H

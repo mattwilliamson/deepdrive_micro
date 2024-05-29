@@ -13,4 +13,11 @@ void StatusManager::set(Status new_status) {
   status = new_status;
 }
 
-StatusManager::StatusManager() : status(Status::Init) {}
+StatusManager::StatusManager() : status(Status::Init), errorString("") {}
+
+void StatusManager::removeStatus(Status status) {
+  if (status == status) {
+    status = Status::Init;
+    errorString = "";
+  }
+}

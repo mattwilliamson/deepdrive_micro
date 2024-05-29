@@ -15,6 +15,7 @@
 #include "pico/stdlib.h"
 #include "status.hpp"
 #include "ws2812.pio.h"
+#include "constants.h"
 
 /**
  * @class LEDRing

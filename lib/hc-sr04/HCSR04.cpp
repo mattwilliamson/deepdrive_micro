@@ -11,8 +11,6 @@ class HCSR04 {
  public:
   // constructor
   // input = pin connected to the 'Echo' pin of the HCSR04.
-  // ! NOTE: USE A VOLTAGE DIVIDER FOR THE INPUT (i.e. the Echo pin of the HCSR04)
-  //         to go from 5V (which is needed by the HCSR04 module) to 3.3V
   // output = pin connected to the 'Trig' pin of the HCSR04.
   HCSR04(uint input, uint output) {
     // pio 1 is used
@@ -33,6 +31,7 @@ class HCSR04 {
       offset = pio_add_program(pio, &HCSR04_program);
       program_loaded_ = true;
     }
+
     // make a sm config
     pio_sm_config c = HCSR04_program_get_default_config(offset);
     // set the 'in' pins, also used for 'wait'

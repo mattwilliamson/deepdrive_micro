@@ -1,6 +1,7 @@
 #include "pubsub/pub_sonar.hpp"
 
-static bool _pub_sonar_triggered[SONAR_SENSORS];
+// Map of gpio number to triggered sonar sensors
+static bool _pub_sonar_triggered[30];
 
 bool PubSonar::trigger(repeating_timer_t *rt) {
   _pub_sonar_triggered[(uint)rt->user_data] = true;
@@ -20,7 +21,7 @@ PubSonar::PubSonar(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *a
   msg_ = sensor_msgs__msg__LaserScan__create();
   msg_->header.frame_id = micro_ros_string_utilities_init(frame_id);
   // http://docs.ros.org/en/melodic/api/sensor_msgs/html/msg/Range.html
-  msg_->angle_min = -SONAR_FOV * M_PI / 180;                          // degrees in radians start of scane
+  msg_->angle_min = -SONAR_FOV * M_PI / 180;                          // degrees in radians start of scan
   msg_->angle_max = SONAR_FOV * M_PI / 180;                           // degrees in radians end of scan
   msg_->angle_increment = SONAR_FOV * M_PI / 180 / SONAR_LASER_RAYS;  // degrees in radians
   msg_->time_increment = 0.0;                                         // time between measurements [seconds]
@@ -38,11 +39,12 @@ PubSonar::PubSonar(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *a
     samples_[i] = 0;
   }
 
-  sonar_ = new HCSR04(pin_echo_, pin_trigger_);
+  sonar_ = new HCSR04(echo_pin, trigger_pin);
 
   mutex_init(&lock_);
 
   data_ready_ = false;
+  _pub_sonar_triggered[pin_trigger_] = false;
 
   status_ = rclc_publisher_init_default(
       &publisher_, node_,
@@ -51,17 +53,24 @@ PubSonar::PubSonar(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *a
   assert(status_ == RCL_RET_OK);
 
   // Clear FIFO
-  sonar_->trigger();
+  // sonar_->trigger();
 
   assert(add_repeating_timer_us(-MICROSECONDS / timer_hz, PubSonar::trigger, (void *)trigger_pin, &timer_));
+  started_ = true;
 }
 
 void PubSonar::calculate() {
-  if (!_pub_sonar_triggered[pin_trigger_]) {
+  mutex_enter_blocking(&lock_);
+
+  if (started_ != true) {
+    mutex_exit(&lock_);
     return;
   }
 
-  mutex_enter_blocking(&lock_);
+  if (!_pub_sonar_triggered[pin_trigger_]) {
+    mutex_exit(&lock_);
+    return;
+  }
 
   // Wrap around the ring buffer
   if (sample_index_ >= SONAR_SAMPLES) {
