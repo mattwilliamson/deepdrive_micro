@@ -74,11 +74,9 @@ void SubCmdVel::callback(const geometry_msgs__msg__Twist *msg) {
   double left = x - (wheel_separation * z);
   double right = x + (wheel_separation * z);
 
+  // TODO: If left or right >0 ?
   auto motors = motor_manager_->get_motors();
-  
-  for (const auto& motor : motors) {
-    motor->enable();
-  }
+  motor_manager_->enable_motors();
 
   // Set the target speed for each motor
   motors[IDX_MOTOR_FRONT_LEFT]->setTargetSpeedMeters(left);

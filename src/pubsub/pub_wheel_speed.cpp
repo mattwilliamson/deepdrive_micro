@@ -50,9 +50,16 @@ void PubWheelSpeed::calculate() {
   auto motors = motor_manager_->get_motors();
 
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    msg_->effort.data[i] = motors[i]->getSpeed();
-    msg_->velocity.data[i] = motors[i]->getSpeedMeters();
-    msg_->position.data[i] = motors[i]->getPulses();
+    // msg_->effort.data[i] = motors[i]->getSpeed();
+    // msg_->effort.data[i] = motors[i]->getTargetSmoothed();
+    msg_->effort.data[i] = motors[i]->getSpeedMeters();
+
+    msg_->velocity.data[i] = motors[i]->getSpeed();
+    // msg_->position.data[i] = motors[i]->getPulses();
+    
+    Pulses target = motors[i]->getSpeedSignal();
+    DutyCycle duty = motors[i]->pulsesToDutyCycle(target);
+    msg_->position.data[i] = duty;
   }
 
   // Set timestamp

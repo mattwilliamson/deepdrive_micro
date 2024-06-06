@@ -5,4 +5,7 @@
 #define MICROSECONDS 1e6
 #define MILLISECONDS 1e3
 
+#define LIPO_MIN_VOLTAGE 3.0
+#define LIPO_MAX_VOLTAGE 4.2
+
 #endif // CONSTANTS_H

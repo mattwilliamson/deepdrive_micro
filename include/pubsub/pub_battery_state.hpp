@@ -1,6 +1,8 @@
 #ifndef PUB_BATTERY_STATE_HPP
 #define PUB_BATTERY_STATE_HPP
 
+#include <limits>
+
 #include "analog_sensors.hpp"
 #include "pubsub/pubsub.hpp"
 #include "buzzer.hpp"

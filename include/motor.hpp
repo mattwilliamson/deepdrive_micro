@@ -2,17 +2,15 @@
 #define MOTOR_H
 
 #include <math.h>
+#include <rmw_microros/rmw_microros.h>
 
 #include <limits>
 #include <map>
-
-#include <rmw_microros/rmw_microros.h>
 
 extern "C" {
 #include "config.h"
 #include "hardware/pwm.h"
 #include "pico/stdlib.h"
-#include "config.h"
 }
 
 #include "pid.hpp"
@@ -47,12 +45,18 @@ static volatile uint32_t pulse_count_map[30] = {};
  */
 class Motor {
  public:
-  // 1000 us
+  // 1000 us full throttle backward
   static const DutyCycle DUTY_CYCLE_MIN = MOTOR_DUTY_CYCLE_MIN;
-  // 1500 us
-  static const DutyCycle DUTY_CYCLE_CENTER = MOTOR_DUTY_CYCLE_CENTER;
-  // 2000 us
+  // 2000 us full throttle forward
   static const DutyCycle DUTY_CYCLE_MAX = MOTOR_DUTY_CYCLE_MAX;
+
+  // 1500 us stop
+  static const DutyCycle DUTY_CYCLE_STOP = MOTOR_DUTY_CYCLE_STOP;
+
+  // Range from stop in either direction that doesn't spin the motor
+  static const DutyCycle DUTY_CYCLE_DEADZONE = MOTOR_DUTY_CYCLE_DEADZONE;
+
+  static const DutyCycle DUTY_CYCLE_RANGE = MOTOR_DUTY_CYCLE_RANGE;
 
   // diameter of the wheel in micrometers
   static const Micrometers WHEEL_DIAMETER = WHEEL_DIAMETER_MM * MICRO_METERS / MILLI_METERS;
@@ -65,17 +69,19 @@ class Motor {
   static const Pulses PULSES_PER_REV = MOTOR_PULSES_PER_REV;  // 2x for rising and falling edge
 
   // Pulses per second at full throttle (of the slowest motor)
-  static const Pulses MAX_SPEED_PPS = MOTOR_MAX_SPEED_PPS;  // 2x for rising and falling edge
+  // Pulses maxSpeedPPS_ = MOTOR_MAX_SPEED_PPS;
+  
+  double dutyCyclePulsesRatio = MOTOR_DUTY_CYCLE_RANGE / MOTOR_LIMIT_SPEED_PPS;
+
+  // Pulses per second limit
+  static const Pulses LIMIT_SPEED_PPS = MOTOR_LIMIT_SPEED_PPS;
 
   // Micrometers per revolution of the motor
   static constexpr Micrometers UM_PER_REV = WHEEL_DIAMETER * M_PI;
 
-  // Number of pulses at max speed for each time slice of the control loop
-  static constexpr Pulses MAX_PULSES_PER_LOOP = MAX_SPEED_PPS / CONTROL_LOOP_HZ;
-
   // static constexpr Pulses PULSES_PER_UM = PULSES_PER_REV / UM_PER_REV;
   // static constexpr double MAX_SPEED_US_PER = MAX_SPEED_PPS / PULSES_PER_UM;
-  // // Meter per second at full throttle
+  // Meters per second at full throttle
 
   PIDController *pidController_;  // PID controller for the motor
 
@@ -129,28 +135,42 @@ class Motor {
    * @param toMax The maximum value of the output range.
    * @return The mapped value.
    */
-  static int64_t map(int64_t value, int64_t fromMin, int64_t fromMax,
-                     int64_t toMin, int64_t toMax) {
+  static int64_t map(int64_t value, int64_t fromMin, int64_t fromMax, int64_t toMin, int64_t toMax) {
     // Calculate the range of the input and output values
     int64_t inputRange = fromMax - fromMin;
     int64_t outputRange = toMax - toMin;
 
     // Map the value from the input range to the output range
-    int64_t mappedValue =
-        ((value - fromMin) * outputRange) / inputRange + toMin;
+    int64_t mappedValue = ((value - fromMin) * outputRange) / inputRange + toMin;
 
     return mappedValue;
   }
 
+  // Calculate the min and max duty cycle for the motor based on reference measurements
+  void setReferenceDutyCycle(DutyCycle dutyCycle, Pulses measuredSpeed) {
+    double range = dutyCycle - DUTY_CYCLE_STOP - DUTY_CYCLE_DEADZONE;
+    dutyCyclePulsesRatio = range / measuredSpeed;
+  }
+
   // Convert pulses/sec to max/min duty cycle
-  static DutyCycle pulsesToDutyCycle(Pulses pulsesPerSecond) {
-    return map(pulsesPerSecond, -MAX_SPEED_PPS, MAX_SPEED_PPS, DUTY_CYCLE_MIN,
-               DUTY_CYCLE_MAX);
+  DutyCycle pulsesToDutyCycle(Pulses pulsesPerSecond) {
+    if (pulsesPerSecond == 0) {
+      return DUTY_CYCLE_STOP;
+    } else if (pulsesPerSecond > 0) {
+      return DUTY_CYCLE_STOP + DUTY_CYCLE_DEADZONE + (dutyCyclePulsesRatio * pulsesPerSecond);
+    } else {
+      return DUTY_CYCLE_STOP - DUTY_CYCLE_DEADZONE + (dutyCyclePulsesRatio * pulsesPerSecond);
+    }
   }
 
   // Convert Micrometers to pulses
   static Pulses micrometersToPulses(Micrometers uM) {
     return uM * PULSES_PER_REV / UM_PER_REV;
+  }
+
+  // Convert Meters to pulses
+  static Pulses metersToPulses(Meters m) {
+    return m * MICRO_METERS * PULSES_PER_REV / UM_PER_REV;
   }
 
   // Convert pulses to micrometers
@@ -246,8 +266,13 @@ class Motor {
    */
   void setTargetSpeed(Pulses targetSpeed);
 
+  /**
+   * Sets the target speed of the motor in meters per second.
+   *
+   * @param metersPerSecond The target speed in meters per second.
+   */
   void setTargetSpeedMeters(Meters metersPerSecond) {
-    Pulses p = micrometersToPulses(metersPerSecond * MICRO_METERS);
+    Pulses p = metersToPulses(metersPerSecond);
     setTargetSpeed(p);
   }
 
@@ -262,6 +287,14 @@ class Motor {
    * @return The target speed of the motor in meters/sec.
    */
   Meters getTargetSpeedMeters();
+
+  /**
+   * @brief Get the smoothed target speed of the motor.
+   * @return The smoothed target speed of the motor in pulses/sec.
+   */
+  Pulses getTargetSmoothed() {
+    return targetSmoothed_;
+  }
 
   /**
    * @brief Read the number of pulses counted by the motor.
@@ -313,21 +346,25 @@ class Motor {
 
   void updateMotorOutput();
 
+  void smoothTargetSpeed();
+
  private:
   int pin_;                                                 // Pin number of the motor
   int encoderPin_;                                          // Pin number of the motor encoder
-  int64_t speed_;                                           // current speed pulses/sec
-  int64_t pulses_loop_;                                     // current speed pulses/loop
-  int64_t speedSignal_;                                     // current speed signal pulses/sec
-  int64_t targetSpeed_;                                     // desired speed of the motor pulses/sec
-  int64_t pulses_;                                          // Number of pulses counted by the motor total
+  Pulses speed_;                                            // current speed pulses/sec
+  Pulses pulses_loop_;                                      // current speed pulses/loop
+  Pulses speedSignal_;                                      // current speed signal pulses/sec
+  Pulses targetSpeed_;                                      // desired speed of the motor pulses/sec
+  Pulses targetSmoothed_;                                   // smoothed speed of the motor based off targetSpeed_ pulses/sec
+  Pulses pulses_;                                           // Number of pulses counted by the motor total
   int dutyCycle_;                                           // PWM duty cycle
   uint slice_;                                              // PWM slice number
   uint channel_;                                            // PWM channel number
   int8_t direction_;                                        // Direction of the motor (1, 0, -1)
   Side side_;                                               // Which side the motor is on
-  RingBuffer<uint64_t, ENCODER_PULSE_BUFFER> pulseBuffer_;  // Buffer to store pulse counts
+  RingBuffer<int64_t, ENCODER_PULSE_BUFFER> pulseBuffer_;  // Buffer to store pulse counts
   uint64_t lastRead_;                                       // Last time the encoder was read
+  uint64_t lastTargetSpeedSet_;                             // Last time the target speed was set
 
   int64_t enabled_time_;
   bool enabled_ = false;

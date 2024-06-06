@@ -10,7 +10,7 @@ AnalogSensors::AnalogSensors() {
   gpio_init(23);
 }
 
-float AnalogSensors::getBatteryVoltage() {
+void AnalogSensors::updateBatteryVoltage() {
   // TODO: Average battery over time
   
 
@@ -36,7 +36,7 @@ float AnalogSensors::getBatteryVoltage() {
   // Enable power saving
   // gpio_put(23, 0);
 
-  return battery_volts;
+  battery.updateVoltage(battery_volts);
 }
 
 double AnalogSensors::getTemperature() {
@@ -59,21 +59,4 @@ double AnalogSensors::getTemperature() {
   mutex_exit(&lock_);
 
   return tempC;
-}
-
-float AnalogSensors::convertVoltageToPercentage(float voltage) {
-  // Assuming a LiPo battery with a voltage range of 3.0V to 4.2V
-  // float minVoltage = 3.0 * BATTERY_CELLS;
-  // float maxVoltage = 4.2 * BATTERY_CELLS;
-  // Base these numbers off discharge graphs
-  float minVoltage = 3.3 * BATTERY_CELLS;
-  float maxVoltage = 4.0 * BATTERY_CELLS;
-
-  // Calculate the percentage based on the voltage range
-  float percentage = (voltage - minVoltage) / (maxVoltage - minVoltage) * 100.0;
-
-  // Ensure the percentage is within the valid range of 0% to 100%
-  percentage = std::clamp(percentage, 0.0f, 100.0f);
-
-  return percentage;
 }

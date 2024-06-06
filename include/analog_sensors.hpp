@@ -5,13 +5,13 @@
 #include <cstdint>
 
 extern "C" {
+#include "hardware/adc.h"
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
-#include "hardware/adc.h"
 }
 
+#include "battery.hpp"
 #include "config.h"
-
 
 /**
  * @brief Class representing analog sensors.
@@ -24,16 +24,17 @@ class AnalogSensors {
   mutex_t lock_;
 
  public:
+  LiPoBattery battery;
+
   /**
    * @brief Initializes the analog sensors.
    */
   AnalogSensors();
 
   /**
-   * @brief Gets the battery voltage.
-   * @return The battery voltage in volts.
+   * @brief Reads the battery voltage and updates internal battery state.
    */
-  float getBatteryVoltage();
+  void updateBatteryVoltage();
 
   /**
    * @brief Gets the temperature.
@@ -42,11 +43,12 @@ class AnalogSensors {
   double getTemperature();
 
   /**
-   * @brief Converts a voltage value to a percentage for a lipo battery.
-   * @param voltage The voltage value to convert.
-   * @return The percentage value.
+   * @brief Gets the battery object.
+   * @return The battery object.
    */
-  static float convertVoltageToPercentage(float voltage);
+  LiPoBattery& getBattery() {
+    return battery;
+  }
 };
 
 #endif  // ANALOG_SENSORS_HPP

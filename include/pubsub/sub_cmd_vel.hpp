@@ -3,6 +3,7 @@
 
 #include "motor_manager.hpp"
 #include "pubsub/pubsub.hpp"
+#include "ring_buffer.hpp"
 
 /**
  * @class SubCmdVel
@@ -28,7 +29,7 @@ class SubCmdVel {
    * @param topic The topic to subscribe to (default: "~/cmd_vel").
    */
   SubCmdVel(rcl_node_t *node, rclc_support_t *support, rcl_allocator_t *allocator, rclc_executor_t *executor,
-            MotorManager *motor_manager, const char *topic = "/cmd_vel");
+            MotorManager *motor_manager, const char *topic = "~/cmd_vel");
 
   /**
    * @brief Subscribe to the cmd_vel topic.
@@ -80,7 +81,8 @@ class SubCmdVel {
   geometry_msgs__msg__Twist *msg_; /**< Received cmd_vel message. */
   geometry_msgs__msg__Twist *prev_msg_; /**< Received cmd_vel message. */
   int64_t last_message_time_ = 0; /**< Timestamp of the last received message. */
-  
+  // RingBuffer<uint64_t, CMD_VEL_BUFFER> cmdBuffer;  // Buffer to store pulse counts
+  // TODO: create a timer to insert the last cmd_vel into the buffer so the average can be used to smooth it out
 
   /**
    * @brief Internal callback function for processing cmd_vel messages.

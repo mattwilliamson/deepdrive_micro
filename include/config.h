@@ -53,7 +53,7 @@ static const int CENTI_METERS = 100.0;
 
 // Time to wait after connecting to agent to consider startup complete
 // Pulses will be reset to 0
-#define STARTUP_DELAY 2000 // milliseconds
+#define STARTUP_DELAY 1000 // milliseconds
 
 // ----------------------------------
 // START LED RING
@@ -81,8 +81,8 @@ static const int CENTI_METERS = 100.0;
 // START micro-ros
 // ----------------------------------
 
-#define UROS_TIMEOUT 1000
-#define UROS_ATTEMPTS 120
+#define UROS_TIMEOUT 5000
+#define UROS_ATTEMPTS 5
 // #define UROS_ATTEMPTS 1
 
 // ----------------------------------
@@ -105,6 +105,8 @@ static const int CENTI_METERS = 100.0;
 // START MOTORS
 // ----------------------------------
 
+#define CMD_VEL_BUFFER 5
+
 // Time since last cmd_vel message before stopping the robot
 #define CMD_VEL_TIMEOUT 10 * NANOSECONDS
 
@@ -114,11 +116,13 @@ static const int CENTI_METERS = 100.0;
 // Time to wait for motors and stay at neutral speed after enabling (3s)
 #define MOTOR_NEUTRAL_TIME 2 * NANOSECONDS
 
+// Limit acceleration for each motor
 // Meters per second squared
-#define MAX_ACCELERATION_LINEAR .1
+#define MAX_ACCELERATION_LINEAR .75
+// #define MAX_ACCELERATION_LINEAR .1
 
 // Radians per second squared
-#define MAX_ACCELERATION_ROTATION .2
+// #define MAX_ACCELERATION_ROTATION .2
 
 #define MOTOR_COUNT 4
 
@@ -140,12 +144,23 @@ static const int CENTI_METERS = 100.0;
 #define MOTOR_LEFT 0
 #define MOTOR_RIGHT 1
 
+// Motors are stopped in this range
+// Duty cycle deadzone 762 - 726 = 36 / 2 = 18
+// Middle is (762 + 726) / 2 = 744
+// Dead in either direction this amount
+#define MOTOR_DUTY_CYCLE_DEADZONE 18
+
 // 1000 us
-#define MOTOR_DUTY_CYCLE_MIN      490
-// 1500 us
-#define MOTOR_DUTY_CYCLE_CENTER   735
+#define MOTOR_DUTY_CYCLE_STOP      744
+
+// 1000 us - 2000 us -> 490 - 980 duty cycle
+// 980 - 490 = 490
+#define MOTOR_DUTY_CYCLE_RANGE    490
+
+// 1000 us
+#define MOTOR_DUTY_CYCLE_MIN      MOTOR_DUTY_CYCLE_STOP - (MOTOR_DUTY_CYCLE_RANGE / 2)
 // 2000 us
-#define MOTOR_DUTY_CYCLE_MAX      980
+#define MOTOR_DUTY_CYCLE_MAX      MOTOR_DUTY_CYCLE_STOP + (MOTOR_DUTY_CYCLE_RANGE / 2)
 
 // How many pulses are output for one revolution of the motor
   // 69579 / 50 = 1,391.58
@@ -157,19 +172,49 @@ static const int CENTI_METERS = 100.0;
 // 89 * 3.14159 = 280.5 mm per revolution -> .281 meters/rev
 #define WHEEL_DIAMETER_MM         89
 
+// Top speed in meters per second that we want to acheive (artificial limit)
+#define MOTOR_LIMIT_SPEED_MS      1.0
+
+// Top speed in pulses per second that we want to acheive (artificial limit)
+#define MOTOR_LIMIT_SPEED_PPS     (MOTOR_LIMIT_SPEED_MS / METERS_PER_REV * MOTOR_PULSES_PER_REV)
+
+
+// Measure the pulses per second at a given duty cycle and to figure out what the range is for setting the duty cycle
+// Subscribe to the /deepdrive_micro/wheel_speed/out.position[1] and /deepdrive_micro/wheel_speed/out.velocity[1] topics
+// #define MOTOR_DUTY_CYCLE_REFERENCE_PWM     744
+#define MOTOR_DUTY_CYCLE_REFERENCE_PWM      785
+
+#define MOTOR_REF_SPEED_FRONT_LEFT          900
+#define MOTOR_REF_SPEED_BACK_LEFT           900
+#define MOTOR_REF_SPEED_FRONT_RIGHT         900
+#define MOTOR_REF_SPEED_BACK_RIGHT          900
+
+// duty cycle = 778
+// target speed = .1 m/s
+// measured speed = .43 m/s  or 2000 pulses/s
+
+
+// Max speed that the motor supports (hard limit for mapping speed to pulses)
+#define MOTOR_MAX_SPEED_MS        2.0
+#define MM_PER_REV                (M_PI * WHEEL_DIAMETER_MM)
+#define METERS_PER_REV            (MM_PER_REV / MILLI_METERS)
+
+
 // Set max speed to about 1.124 m/s (4 revs per second)
 // #define MOTOR_MAX_SPEED_PPS       4 * MOTOR_PULSES_PER_REV
 // Set max speed to about .281 m/s (1 revs per second)
-#define MOTOR_MAX_SPEED_PPS       MOTOR_PULSES_PER_REV
+// #define MOTOR_MAX_SPEED_PPS       MOTOR_PULSES_PER_REV
+#define MOTOR_MAX_SPEED_PPS       (MOTOR_MAX_SPEED_MS / METERS_PER_REV * MOTOR_PULSES_PER_REV)
 
 // Don't accept values this high since they are impossible
-#define MOTOR_MAX_SPEED_FILTER    5 * MOTOR_PULSES_PER_REV
+#define MOTOR_MAX_SPEED_FILTER    (5 * MOTOR_PULSES_PER_REV)
 
 // How far apart the wheels are in mm from left to right innermost edge
 #define WHEEL_BASE_MM             240
 
 // Multiplier to adjust the wheel base to compensate for slippage
-#define WHEEL_BASE_COEFFICIENT    1.0
+// #define WHEEL_BASE_COEFFICIENT    1.0
+#define WHEEL_BASE_COEFFICIENT    1.5
 
 // END MOTORS
 // ----------------------------------
@@ -214,19 +259,19 @@ static const int CENTI_METERS = 100.0;
 // #define PID_KD 0.2
 
 // Proportional
-#define PID_KP .08
-// #define PID_KP 0.01
+// #define PID_KP .001
+#define PID_KP 1.0
 // #define PID_KP 0.019
 
 // Integral
 // #define PID_KI 0
-#define PID_KI 0.07
+#define PID_KI 0.02
 // #define PID_KI 0.0015
 // #define PID_KI 0.002
 
 // Derivative
 // #define PID_KD 0
-#define PID_KD 0.02
+#define PID_KD 0.05
 // #define PID_KD 0.000
 
 
@@ -259,8 +304,8 @@ static const int CENTI_METERS = 100.0;
 // START IMU
 // ----------------------------------
 
-// #define IMU_PUBLISH
-// #define IMU_ENABLED
+#define IMU_PUBLISH
+#define IMU_ENABLED
 #define IMU_I2C_SPEED 400 * 1000
 #define IMU_I2C_SDA 4
 #define IMU_I2C_SCL 5

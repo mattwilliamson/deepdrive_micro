@@ -49,8 +49,9 @@ void PubBatteryState::calculate() {
 
   mutex_enter_blocking(&lock_);
 
-  msg_->voltage = analog_sensors_->getBatteryVoltage();
-  msg_->percentage = AnalogSensors::convertVoltageToPercentage(msg_->voltage);
+  LiPoBattery& battery = analog_sensors_->getBattery();
+
+  msg_->voltage = battery.getVoltage();
 
   msg_->present = true;
   msg_->temperature = analog_sensors_->getTemperature();
@@ -58,6 +59,8 @@ void PubBatteryState::calculate() {
   if (msg_->voltage > 2.0) {
     msg_->power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_DISCHARGING;
     msg_->present = true;
+    msg_->percentage = battery.getPercentage();
+    // msg_->charge = battery.getRemainingCapacity();
   } else {
     msg_->power_supply_status = sensor_msgs__msg__BatteryState__POWER_SUPPLY_STATUS_UNKNOWN;
     msg_->present = false;

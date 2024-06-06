@@ -19,10 +19,11 @@ Motor::Motor(Side side, int pin, int encoderPin) {
   pulses_loop_ = 0;
   speedSignal_ = 0;
   lastRead_ = time_us_64();
+  targetSmoothed_ = 0;
 
   // https://pidexplained.com/how-to-tune-a-pid-controller/
-  pidController_ = new PIDController(-MAX_SPEED_PPS,  // Min
-                                     MAX_SPEED_PPS,   // Max
+  pidController_ = new PIDController(-MOTOR_MAX_SPEED_PPS,  // Min
+                                     MOTOR_MAX_SPEED_PPS,   // Max
                                      PID_KP,          // Kp
                                      PID_KI,          // Ki
                                      PID_KD           // Kd
@@ -151,10 +152,14 @@ int16_t Motor::calculatePid() {
 
 #ifdef ODOM_OPEN_LOOP
   // Open loop control, just set the speed and ignore pulses.
-  return targetSpeed_;
+  output = targetSmoothed_;
 #endif
 
-  lastRead_ = time_us_64();
+  if (output > LIMIT_SPEED_PPS) {
+    output = LIMIT_SPEED_PPS;
+  } else if (output < -LIMIT_SPEED_PPS) {
+    output = -LIMIT_SPEED_PPS;
+  }
 
   return output;
 }
@@ -190,7 +195,7 @@ void Motor::setSpeedSignal(Pulses speed) {
 
 void Motor::setTargetSpeed(Pulses targetSpeed) {
   targetSpeed_ = targetSpeed;
-  pidController_->setSetpoint(targetSpeed_);
+  lastTargetSpeedSet_ = time_us_64();
 }
 
 Pulses Motor::getTargetSpeed() {
@@ -201,30 +206,60 @@ Meters Motor::getTargetSpeedMeters() {
   return pulsesToMeters(targetSpeed_);
 }
 
-void Motor::stop() { 
+void Motor::stop() {
   setTargetSpeed(0);
-  setSpeedSignal(0); 
+  setSpeedSignal(0);
+}
+
+// Limit acceleration and smooth it out
+void Motor::smoothTargetSpeed() {
+  // TODO: Bezier curve for acceleration
+  // int64_t lastTargetSpeedSet = lastTargetSpeedSet_;
+  int64_t elapsed_us = time_us_64() - lastRead_;
+  static const double accel = metersToPulses(MAX_ACCELERATION_LINEAR);
+  double elapsed_seconds = static_cast<double>(elapsed_us) / MICROSECONDS;
+  double maxSpeedChange = accel * elapsed_seconds;
+  double targetSpeedChange = targetSpeed_ - targetSmoothed_;
+
+  if (targetSpeedChange > maxSpeedChange) {
+    targetSmoothed_ += maxSpeedChange;
+  } else if (targetSpeedChange < -maxSpeedChange) {
+    targetSmoothed_ -= maxSpeedChange;
+  } else {
+    targetSmoothed_ = targetSpeed_;
+  }
 }
 
 void Motor::updateMotorOutput() {
   // Get pulses since last loop and extrapolate speed
   readPulses();
+  smoothTargetSpeed();
+  pidController_->setSetpoint(targetSmoothed_);
+  lastRead_ = time_us_64();
 
-  if (getTargetSpeed() == 0) {
-    // We're supposed to be stopped, so let reset it all
+  // We're supposed to be stopped, so let reset it all
+  if (targetSmoothed_ == 0) {
     stop();
     pidController_->reset();
-    lastRead_ = time_us_64();
     return;
   }
+
+  // TODO: Use state machine to transition between ready and such
 
   // Make sure the motor has been idle long enough for the ESC to start up
   if (enabled_ && rmw_uros_epoch_nanos() - enabled_time_ > MOTOR_NEUTRAL_TIME) {
     // Calculate instantaneous speed and PID controller output
     Pulses pid_output = calculatePid();
+
+    if (pid_output * direction_ < 0) {
+      // We are going the wrong way, stop the motor instead of switching directions
+      pid_output = 0;
+      return;
+    }
+
     setSpeedSignal(pid_output);
+
   } else {
-    lastRead_ = time_us_64();
     setSpeedSignal(0);
   }
 }

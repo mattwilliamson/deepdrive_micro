@@ -115,6 +115,8 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Fix front sonar
+- Some kind of exception handler so that when assert fails, it stops the motors and flashes the lights
 - Motor must be set to 0 for a couple seconds before moving
 - Turn off motor PWM when stopped for a period of time to avoid the beeping
 - Remove pulse counter hardware filters

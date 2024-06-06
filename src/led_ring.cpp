@@ -9,6 +9,9 @@ LEDRing::LEDRing(uint8_t pin, PIO pio, uint8_t ledCount)
 }
 
 void LEDRing::start() {
+  if (started_) return;
+  started_ = true;
+  
   t = 0;
   // printf("WS2812 Smoke Test, using pin %d", pin);
   int sm = pio_claim_unused_sm(pio, false);
@@ -66,7 +69,7 @@ void LEDRing::renderStatus(Status status) {
       fill(0x99, 0x66, 0x00);
       break;
     case Status::Init:
-      fadeW(0x99, t);
+      fadeR(0x66, t);
       break;
     default:
       fill(0x33, 0x33, 0x33);
@@ -122,6 +125,16 @@ void LEDRing::fade(uint8_t r, uint8_t g, uint8_t b, uint8_t t) {
 void LEDRing::fadeR(uint8_t r, uint8_t t) {
   uint8_t r2 = (uint8_t)((uint16_t)sine(t) * r / UINT8_MAX);
   fill(r2, 0, 0);
+}
+
+void LEDRing::fadeG(uint8_t r, uint8_t t) {
+  uint8_t r2 = (uint8_t)((uint16_t)sine(t) * r / UINT8_MAX);
+  fill(0, r2, 0);
+}
+
+void LEDRing::fadeB(uint8_t r, uint8_t t) {
+  uint8_t r2 = (uint8_t)((uint16_t)sine(t) * r / UINT8_MAX);
+  fill(0, 0, r2);
 }
 
 void LEDRing::fadeW(uint8_t w, uint8_t t) {

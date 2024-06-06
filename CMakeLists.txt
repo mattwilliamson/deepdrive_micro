@@ -50,6 +50,7 @@ add_executable(deepdrive_micro
     src/analog_sensors.cpp
     src/watchdog.cpp
     lib/hc-sr04/HCSR04.cpp
+    src/battery.cpp
     
     src/pubsub/pubsub.cpp
 
