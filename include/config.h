@@ -148,7 +148,7 @@ static const int CENTI_METERS = 100.0;
 // Duty cycle deadzone 762 - 726 = 36 / 2 = 18
 // Middle is (762 + 726) / 2 = 744
 // Dead in either direction this amount
-#define MOTOR_DUTY_CYCLE_DEADZONE 18
+#define MOTOR_DUTY_CYCLE_DEADZONE 8
 
 // 1000 us
 #define MOTOR_DUTY_CYCLE_STOP      744
@@ -182,12 +182,13 @@ static const int CENTI_METERS = 100.0;
 // Measure the pulses per second at a given duty cycle and to figure out what the range is for setting the duty cycle
 // Subscribe to the /deepdrive_micro/wheel_speed/out.position[1] and /deepdrive_micro/wheel_speed/out.velocity[1] topics
 // #define MOTOR_DUTY_CYCLE_REFERENCE_PWM     744
-#define MOTOR_DUTY_CYCLE_REFERENCE_PWM      785
+#define MOTOR_DUTY_CYCLE_REFERENCE_PWM      786
 
-#define MOTOR_REF_SPEED_FRONT_LEFT          900
-#define MOTOR_REF_SPEED_BACK_LEFT           900
-#define MOTOR_REF_SPEED_FRONT_RIGHT         900
-#define MOTOR_REF_SPEED_BACK_RIGHT          900
+#define MOTOR_REF_SPEED_FRONT_LEFT          2820
+#define MOTOR_REF_SPEED_BACK_LEFT           3270
+#define MOTOR_REF_SPEED_FRONT_RIGHT         3120
+#define MOTOR_REF_SPEED_BACK_RIGHT          2730
+
 
 // duty cycle = 778
 // target speed = .1 m/s
@@ -260,18 +261,18 @@ static const int CENTI_METERS = 100.0;
 
 // Proportional
 // #define PID_KP .001
-#define PID_KP 1.0
+#define PID_KP 0.75
 // #define PID_KP 0.019
 
 // Integral
 // #define PID_KI 0
-#define PID_KI 0.02
+#define PID_KI 0.5
 // #define PID_KI 0.0015
 // #define PID_KI 0.002
 
 // Derivative
-// #define PID_KD 0
-#define PID_KD 0.05
+#define PID_KD 0
+// #define PID_KD 0.05
 // #define PID_KD 0.000
 
 

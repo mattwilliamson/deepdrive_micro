@@ -149,7 +149,10 @@ class Motor {
   // Calculate the min and max duty cycle for the motor based on reference measurements
   void setReferenceDutyCycle(DutyCycle dutyCycle, Pulses measuredSpeed) {
     double range = dutyCycle - DUTY_CYCLE_STOP - DUTY_CYCLE_DEADZONE;
-    dutyCyclePulsesRatio = range / measuredSpeed;
+    dutyCyclePulsesRatio = measuredSpeed / range;
+
+    // Not sure if this is correct, but it seems like the ratio is off by a factor of 2, maybe because of negative vs postivie ranges
+    dutyCyclePulsesRatio = dutyCyclePulsesRatio / 2.0;
   }
 
   // Convert pulses/sec to max/min duty cycle
@@ -157,9 +160,9 @@ class Motor {
     if (pulsesPerSecond == 0) {
       return DUTY_CYCLE_STOP;
     } else if (pulsesPerSecond > 0) {
-      return DUTY_CYCLE_STOP + DUTY_CYCLE_DEADZONE + (dutyCyclePulsesRatio * pulsesPerSecond);
+      return DUTY_CYCLE_STOP + DUTY_CYCLE_DEADZONE + (pulsesPerSecond / dutyCyclePulsesRatio);
     } else {
-      return DUTY_CYCLE_STOP - DUTY_CYCLE_DEADZONE + (dutyCyclePulsesRatio * pulsesPerSecond);
+      return DUTY_CYCLE_STOP - DUTY_CYCLE_DEADZONE + (pulsesPerSecond / dutyCyclePulsesRatio);
     }
   }
 
