@@ -251,11 +251,12 @@ void Motor::updateMotorOutput() {
     // Calculate instantaneous speed and PID controller output
     Pulses pid_output = calculatePid();
 
-    if (pid_output * direction_ < 0) {
-      // We are going the wrong way, stop the motor instead of switching directions
-      pid_output = 0;
-      return;
-    }
+    // TODO: Figure out way to prevent slapping back and forth without preventing turning
+    // if (pid_output * direction_ < 0) {
+    //   // We are going the wrong way, stop the motor instead of switching directions
+    //   pid_output = 0;
+    //   return;
+    // }
 
     setSpeedSignal(pid_output);
 

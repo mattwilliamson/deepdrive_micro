@@ -56,6 +56,49 @@ sudo mount /mnt/sda1
 sudo cp src/deepdrive_micro/deepdrive_micro.uf2 /mnt/sda1
 ```
 
+## Installation
+
+### Setup device alias to `/dev/deepdrive_micro`
+
+Check attributes
+
+```sh
+$ sudo dmesg
+[434031.462057] usb 1-2.4.2: new full-speed USB device number 9 using tegra-xusb
+[434031.578688] usb 1-2.4.2: New USB device found, idVendor=2e8a, idProduct=000a, bcdDevice= 1.00
+[434031.578698] usb 1-2.4.2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[434031.578702] usb 1-2.4.2: Product: Pico
+[434031.578706] usb 1-2.4.2: Manufacturer: Raspberry Pi
+[434031.578710] usb 1-2.4.2: SerialNumber: 454741505A85844A
+[434031.616606] cdc_acm 1-2.4.2:1.0: ttyACM0: USB ACM device
+[434031.618299] usbcore: registered new interface driver cdc_acm
+[434031.618303] cdc_acm: USB Abstract Control Model driver for USB modems and ISDN adapters
+
+$ udevadm info -a -n /dev/ttyACM0 | grep serial
+    ATTRS{serial}=="454741505A85844A"
+    ATTRS{serial}=="3610000.xhci"
+```
+
+Setup alias
+
+```sh
+sudo apt install libudev-dev
+
+cat << EOF | sudo tee /etc/udev/rules.d/99-deepdrive_micro.rules
+ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="000a", MODE:="0777", SYMLINK+="deepdrive_micro"
+EOF
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+Verify
+
+```sh
+$ ls -lah /dev/deepdrive_micro
+lrwxrwxrwx 1 root root 15 Jul 29 07:37 /dev/deepdrive_micro -> bus/usb/001/024
+```
+
+
 ## Run micro ros Agent
 ```sh
 mamba activate ros_env
@@ -115,6 +158,14 @@ front_right_wheel_velocity  89018
 
 
 # TODO
+- Switch back to BNO08x on jetson
+- Fix battery publisher
+- Fix diagnostic string
+- Wide angle camera taking up lots of cpu https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_argus_camera
+- ldlidar taking lots of cpu
+- Try other laser publisher https://github.com/ldrobotSensorTeam/ldlidar_stl_ros/tree/master
+- Try other laser odom https://wiki.ros.org/rf2o
+- depth_image_to_laserscan https://answers.ros.org/question/393773/slam-toolbox-message-filter-dropping-message-for-reason-discarding-message-because-the-queue-is-full/
 - Fix front sonar
 - Some kind of exception handler so that when assert fails, it stops the motors and flashes the lights
 - Motor must be set to 0 for a couple seconds before moving

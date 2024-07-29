@@ -215,7 +215,7 @@ static const int CENTI_METERS = 100.0;
 
 // Multiplier to adjust the wheel base to compensate for slippage
 // #define WHEEL_BASE_COEFFICIENT    1.0
-#define WHEEL_BASE_COEFFICIENT    1.5
+#define WHEEL_BASE_COEFFICIENT    2.5
 
 // END MOTORS
 // ----------------------------------
