@@ -11,7 +11,19 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "constants.h"
+
+// Ping the agent at startup or reboot
+#define UROS_TIMEOUT_STARTUP 1000 /**< Timeout value for UROS communication (ms). */
+#define UROS_ATTEMPTS_STARTUP 10 /**< Number of attempts for UROS communication. */
+
+// Ping the agent periodically
+#define UROS_TIMEOUT_PERIODIC 50 /**< Timeout value for UROS communication (ms). */
+#define MESSAGE_RECEIVE_TIMEOUT 60000 /**< Start pinging the microros-agent if we haven't had a message for a while */
+#define AGENT_PING_ATTEMPTS_REBOOT 10 /**< Reboot the board if we can't reach the agent for 200 * 100 milliseconds (20s) */
+
+#define BOARD_DELAY 10000 /**< Delay in microseconds for board initialization. */
+#define SERIAL_BAUD_RATE 115200 /**< Baud rate for serial communication. */
+
 
 // #define NDEBUG
 
@@ -339,7 +351,7 @@ static const int CENTI_METERS = 100.0;
 // ----------------------------------
 
 // #define BUZZER_ENABLED
-#define PIN_BUZZER 17
+#define BUZZER_PIN 17
 
 // Percent to start warning beeps at
 #define BUZZER_BATTERY_WARN 20.0
@@ -358,16 +370,14 @@ static const int CENTI_METERS = 100.0;
 // START SONAR
 // ----------------------------------
 
-// #define SONAR_ENABLED
-
-#define SONAR_PIO pio1
+#define SONAR_ENABLED
 
 #define SONAR_SENSORS 2
 
-#define SONAR_TRIGGER_PIN_FRONT     21
-#define SONAR_ECHO_PIN_FRONT        20
-#define SONAR_TRIGGER_PIN_BACK      19
-#define SONAR_ECHO_PIN_BACK         18
+#define SONAR_TRIGGER_PIN_RIGHT     21
+#define SONAR_ECHO_PIN_RIGHT        20
+#define SONAR_TRIGGER_PIN_LEFT      19
+#define SONAR_ECHO_PIN_LEFT         18
 
 // Since a small object will cause a bounce, only use closes ranged objects for navigation
 // #define SONAR_MAX_DISTANCE 4.0f  // meters
@@ -375,10 +385,10 @@ static const int CENTI_METERS = 100.0;
 #define SONAR_MIN_DISTANCE 0.02f  // meters
 #define SONAR_FOV 15  // degrees
 #define SONAR_PUBLISH_RATE 10 // Hz
-#define SONAR_FRAME_FRONT "sonar_front_link" // Need to add separate frame
-#define SONAR_FRAME_BACK "sonar_back_link" // Need to add separate frame
-#define SONAR_TOPIC_FRONT "~/sonar/front"
-#define SONAR_TOPIC_BACK "~/sonar/back"
+#define SONAR_FRAME_LEFT "sonar_left_link" // Need to add separate frame
+#define SONAR_FRAME_RIGHT "sonar_right_link" // Need to add separate frame
+#define SONAR_TOPIC_LEFT "~/sonar/left"
+#define SONAR_TOPIC_RIGHT "~/sonar/right"
 #define SONAR_LASER_RAYS 30
 
 // PIO FIFOs are only four words (of 32 bits)

@@ -3,60 +3,76 @@
 ros micro interface to raspberry pi pico
 
 Interfaces:
-- Motors
-- Motor rotary encoder
-- LED?
-- GPS?
-- LIDAR?
-
-```sh
-git submodule update --init --recursive
-```
-
-## Mount RPI Pico
-
-*Hold boot button when plugging in*
-
-**TODO: probably can use `picotool` to make this easier**
-
-```sh
-sudo mkdir /mnt/sda1
-sudo vi /etc/fstab
-
-# fstab
-/dev/sda1 /mnt/sda1 vfat defaults 0 0
-
-sudo mount /mnt/sda1
-```
-
-## Build & Flash
-
-TODO: for param server .vscode/settings.json
-Param server is not working. Calling spin on the node returns an error
-```json
-    "cmake.configureArgs": [
-        "-DRMW_UXRCE_MAX_NODES=1",
-        "-DRMW_UXRCE_MAX_PUBLISHERS=21",
-        "-DRMW_UXRCE_MAX_SUBSCRIPTIONS=21",
-        "-DRMW_UXRCE_MAX_SERVICES=6",
-        "-DRMW_UXRCE_MAX_CLIENTS=0"
-    ],
-```
-`libmicroros/include/rmw_microxrcedds_c/config.h` should get updated when building
-
-```sh
-make dockershell
-colcon build --cmake-args -DPICO_BOARD=pico_w --packages-select deepdrive_micro
-
-# Copy it to src so the host machine has access
-cp build/deepdrive_micro/deepdrive_micro.uf2 src/deepdrive_micro
-
-# Copy it to rpi pico
-sudo mount /mnt/sda1
-sudo cp src/deepdrive_micro/deepdrive_micro.uf2 /mnt/sda1
-```
+- LEDs
+- Sonar
+- Buzzer
+- Battery Voltage
 
 ## Installation
+
+```sh
+sudo apt update && sudo apt install libhidapi-hidraw0 libhidapi-libusb0
+sudo apt install automake autoconf build-essential texinfo libtool libhidapi-dev libusb-1.0-0-dev gdb-multiarch
+
+cd ~/.platformio/packages/tool-openocd-rp2040-earlephilhower/share/openocd/scripts/
+openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 1000" -c "program $HOME/src/deepdrive_motor_controller/.pio/build/esp32dev/firmware.elf verify reset exit"
+Error: Failed to connect multidrop rp2040.dap0
+```
+
+
+### Option1: Setup OpenOCD / Raspbery Pi Debug Probe
+
+Buy a debug probe from Raspberry Pi foundation or flash another pico with the firmware to act like one.
+
+https://www.raspberrypi.com/documentation/microcontrollers/debug-probe.html
+https://github.com/raspberrypi/debugprobe
+
+#### Udev rules
+
+https://docs.platformio.org/en/latest/core/installation/udev-rules.html#platformio-udev-rules
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/system/99-platformio-udev.rules | sudo tee /etc/udev/rules.d/99-platformio-udev.rules
+curl -fsSL https://raw.githubusercontent.com/raspberrypi/picotool/master/udev/99-picotool.rules | sudo tee /etc/udev/rules.d/99-picotool.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+```sh
+$ pio device list
+/dev/ttyACM0
+------------
+Hardware ID: USB VID:PID=2E8A:000A SER=454741505A85844A LOCATION=1-2.4.2:1.0
+Description: Pico - Board CDC
+
+/dev/ttyACM1
+------------
+Hardware ID: USB VID:PID=2E8A:000C SER=E6626005A7907534 LOCATION=1-2.3:1.1
+Description: Debugprobe on Pico (CMSIS-DAP) - CDC-ACM UART Interface
+```
+
+Plug in picoprobe.
+
+```sh
+$ sudo dmesg
+[91616.853815] usb 1-2.1: new full-speed USB device number 17 using tegra-xusb
+[91616.969400] usb 1-2.1: New USB device found, idVendor=2e8a, idProduct=000c, bcdDevice= 2.00
+[91616.969410] usb 1-2.1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[91616.969415] usb 1-2.1: Product: Debugprobe on Pico (CMSIS-DAP)
+[91616.969419] usb 1-2.1: Manufacturer: Raspberry Pi
+[91616.969422] usb 1-2.1: SerialNumber: E6626005A7907534
+[91616.975556] cdc_acm 1-2.1:1.1: ttyACM1: USB ACM device
+```
+
+```sh
+sudo apt install libudev-dev
+
+cat << EOF | sudo tee /etc/udev/rules.d/61-openocd.rules
+SUBSYSTEM=="usb", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="000c", MODE="660", GROUP="plugdev", TAG+="uaccess", SYMLINK+="picoprobe"
+EOF
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
 
 ### Setup device alias to `/dev/deepdrive_micro`
 
@@ -85,7 +101,7 @@ Setup alias
 sudo apt install libudev-dev
 
 cat << EOF | sudo tee /etc/udev/rules.d/99-deepdrive_micro.rules
-ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="000a", MODE:="0777", SYMLINK+="deepdrive_micro"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="000a", MODE="660", GROUP="plugdev", SYMLINK+="deepdrive_micro"
 EOF
 sudo udevadm control --reload-rules
 sudo udevadm trigger
@@ -99,6 +115,95 @@ lrwxrwxrwx 1 root root 15 Jul 29 07:37 /dev/deepdrive_micro -> bus/usb/001/024
 ```
 
 
+### Option 2: Setup picotool
+
+Update platformio.ini with :
+
+```ini
+upload_protocol = picotool
+```
+
+Plug in to usb while holding `boot_sel` button.
+
+```sh
+$ sudo dmesg -w
+[171216.880875] usb 1-2.4.2: new full-speed USB device number 52 using tegra-xusb
+[171216.993538] usb 1-2.4.2: New USB device found, idVendor=2e8a, idProduct=0003, bcdDevice= 1.00
+[171216.993549] usb 1-2.4.2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[171216.993556] usb 1-2.4.2: Product: RP2 Boot
+[171216.993563] usb 1-2.4.2: Manufacturer: Raspberry Pi
+[171216.993568] usb 1-2.4.2: SerialNumber: E0C9125B0D9B
+[171216.995770] usb-storage 1-2.4.2:1.0: USB Mass Storage device detected
+[171216.996946] scsi host0: usb-storage 1-2.4.2:1.0
+[171218.014872] scsi 0:0:0:0: Direct-Access     RPI      RP2              3    PQ: 0 ANSI: 2
+[171218.024093] sd 0:0:0:0: [sda] 262144 512-byte logical blocks: (134 MB/128 MiB)
+[171218.032936] sd 0:0:0:0: [sda] Write Protect is off
+[171218.037975] sd 0:0:0:0: [sda] Mode Sense: 03 00 00 00
+[171218.039218] sd 0:0:0:0: [sda] No Caching mode page found
+[171218.044788] sd 0:0:0:0: [sda] Assuming drive cache: write through
+[171218.088474]  sda: sda1
+[171218.092332] sd 0:0:0:0: [sda] Attached SCSI removable disk
+^C
+
+$ blkid
+/dev/sda1: SEC_TYPE="msdos" LABEL_FATBOOT="RPI-RP2" LABEL="RPI-RP2" UUID="000A-052D" TYPE="vfat" PARTUUID="000a052d-01"
+
+```
+
+```sh
+sudo mkdir /mnt/deepdrive_micro
+sudo vi /etc/fstab
+
+# /etc/fstab Raspberry Pi Pico
+LABEL="RPI-RP2" /mnt/deepdrive_micro vfat auto,user,rw,exec 0 0
+
+sudo mount /mnt/deepdrive_micro
+```
+
+```sh
+$ df -h /mnt/deepdrive_micro/
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1       128M  8.0K  128M   1% /mnt/deepdrive_micro
+
+$ mount -l | grep deepdrive
+/dev/sda1 on /mnt/deepdrive_micro type vfat (rw,nosuid,nodev,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro,user)
+/dev/sdb1 on /mnt/deepdrive_micro type vfat (rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0002,dmask=0002,allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro,user=matt) [RPI-RP2]
+
+$ picotool info -a
+Program Information
+ name:          deepdrive_micro
+ features:      USB stdin / stdout
+ binary start:  0x10000000
+ binary end:    0x1003c974
+
+Fixed Pin Information
+ none
+
+Build Information
+ sdk version:       1.5.1
+ pico_board:        pico
+ boot2_name:        boot2_w25q080
+ build date:        May 10 2024
+ build attributes:  Debug
+
+Device Information
+ flash size:   2048K
+ ROM version:  3
+
+```
+
+### Option 3: mbed (untested)
+
+Same as option 2 but you need to specify upload location in `platformio.ini`
+
+```ini
+upload_protocol = mbed
+upload_port = /mnt/deepdrive_micro
+```
+
+
+
+
 ## Run micro ros Agent
 ```sh
 mamba activate ros_env
@@ -107,121 +212,13 @@ ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
 ros2 topic echo deepdrive_micro/pulses
 ```
 
-## Publish speed
-Min/Max int16: +/- 32000
-
-```sh
-ros2 topic pub --once deepdrive_micro/cmd control_msgs/msg/MecanumDriveControllerState '{
-    "front_left_wheel_velocity":  0.5,
-    "front_right_wheel_velocity": 0.5,
-    "back_left_wheel_velocity":   0.5,
-    "back_right_wheel_velocity":  0.5
-}'
-
-ros2 topic pub --once deepdrive_micro/cmd control_msgs/msg/MecanumDriveControllerState '{
-    "front_left_wheel_velocity":  0,
-    "front_right_wheel_velocity": 0,
-    "back_left_wheel_velocity":   0,
-    "back_right_wheel_velocity":  0
-}'
-
-ros2 topic pub --once deepdrive_micro/cmd control_msgs/msg/MecanumDriveControllerState '{
-    "front_left_wheel_velocity":  -0.5,
-    "front_right_wheel_velocity": -0.5,
-    "back_left_wheel_velocity":   -0.5,
-    "back_right_wheel_velocity":  -0.5
-}'
-```
-
-TODO: 1000 stops
-2000 is slow
-3000 is a good pace - maybe starting point?
-
-## Testing pulse speed
-// 127 revs, 93156 pulses, 60s, signal = 100%
-// one wheel is 2.2 rev/s another is 2.95
-Slower results in fewer or missed pulses?
-throttle@2000: 34826/50 = 696 pulses per revolution
-thottle@32767: 93156/127 = 734 pulses per revolution
-
-### 60s @ 3000:
-front_left_wheel_velocity   7710
-back_left_wheel_velocity    10491
-back_right_wheel_velocity   8406
-front_right_wheel_velocity  10891
-
-### 60s @ 32767
-front_left_wheel_velocity   87269
-back_left_wheel_velocity    87962
-back_right_wheel_velocity   87201
-front_right_wheel_velocity  89018
 
 
-# TODO
-- Switch back to BNO08x on jetson
-- Fix battery publisher
-- Fix diagnostic string
-- Wide angle camera taking up lots of cpu https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_argus_camera
-- ldlidar taking lots of cpu
-- Try other laser publisher https://github.com/ldrobotSensorTeam/ldlidar_stl_ros/tree/master
-- Try other laser odom https://wiki.ros.org/rf2o
-- depth_image_to_laserscan https://answers.ros.org/question/393773/slam-toolbox-message-filter-dropping-message-for-reason-discarding-message-because-the-queue-is-full/
-- Fix front sonar
-- Some kind of exception handler so that when assert fails, it stops the motors and flashes the lights
-- Motor must be set to 0 for a couple seconds before moving
-- Turn off motor PWM when stopped for a period of time to avoid the beeping
-- Remove pulse counter hardware filters
-- Watchdog for restarts
-- Fix pins for led ring
-- Route pulse counter wires away from motors
-- Fix sonar mount
-- Holder for speaker
-- Remount jetson
-- Read IMU on interrupt to update orientation, but still publish same frequency
-- Convert sonar scan to LaserScan so Nav2 can use it?
-- Add frames to urdf for sonar
-- Emergency stop for twist mux - in case of cliffs or whatnot - publish std_msgs::Bool to /e_stop
-- Add config for open loop and bypass pulse counter
-- if a motor is not getting any pulses after some time, raise some kind of error and stop
-- take minimum pulses for a side to remove outliers
-- Sonar for front and back
-- Odom is off. check each source independently. might need to fix pulse counters somehow
-- need to tune PID controller under load
-- Base class for publishers
-- Speed up core0 with static memory https://docs.vulcanexus.org/en/humble/rst/tutorials/micro/memory_management/memory_management.html#entity-creation
-- Mutexes don't work across cores. Use FIFO to tell core0 which step core1 is on: https://github.com/raspberrypi/pico-examples/blob/master/multicore/multicore_fifo_irqs/multicore_fifo_irqs.c
-- Add status for each publisher to diagnostic
-- Fix up error handling throughout and status manager
-- IMU SPI?
-- Average IMU Readings
-- IMU Retries
-- Set status string for diagnostic
-- average battery voltage
+---
 
-- move lidar back to make room for usb
-- OR move jetson to passenger side with riser and rotate clockwise 90 degrees
-- clear petg led ring fresnel lens
-- 3m screws for led cover
-- IMU AD0 pin connect to address select
-- IMU Shock detected
-- IMU Interrupts 
-- IMU Quaternion accuracy header
+## Notes
 
-- tpu spacer gasket for pcb screws
-- tpu gasket for behind camera
-- publish twistwithcovariancestamped instead of odom?
-- timeout i2c for imu so it doesn't freeze everything
-- power on self test (thinking about IMU here)
-- scaling imu output (Gs) - we don't need 8 Gs worth of scale
+Arduino-pico is based on Mbed. Mbed is not multicore aware, so anything running on core1 can't be FreeRTOS tasks. It must be pure Pico-SDK code.
 
-- param server for pid, speed, etc - mostly coded, just needs to fix the build
-- use flash to save params
-
-
-
-### Motor Feedback Loop
-- interpolators for counting pulses? or pio
-- pid controller on interpolator?
-- back right encoder is giving some noisy pulse counts (there was a solder bridge)
-
+[More info](https://github.com/arduino/ArduinoCore-mbed/issues/242)
 
