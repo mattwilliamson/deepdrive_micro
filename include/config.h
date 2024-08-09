@@ -11,6 +11,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define SerialDebug Serial1
+
 
 // Ping the agent at startup or reboot
 #define UROS_TIMEOUT_STARTUP 1000 /**< Timeout value for UROS communication (ms). */
@@ -46,16 +48,10 @@ static const int CENTI_METERS = 100.0;
 
 // #define STATUS_LED_ENABLED 1
 
-// Control loop updates the motor speed and pid controllers
-// #define CONTROL_LOOP_HZ 4.0
-#define CONTROL_LOOP_HZ 30
 
 #define MAIN_LOOP_HZ 10
 #define TELEMETRY_LOOP_HZ 2
 #define BATTERY_STATE_LOOP_HZ 2
-
-// Run the IMU at a higher rate so the data can be filtered for orientation estimation
-#define IMU_LOOP_HZ 100
 
 // Comment out to disable
 // #define WATCHDOG_ENABLED
@@ -66,6 +62,35 @@ static const int CENTI_METERS = 100.0;
 // Time to wait after connecting to agent to consider startup complete
 // Pulses will be reset to 0
 #define STARTUP_DELAY 1000 // milliseconds
+
+
+// ----------------------------------
+// START IMU
+// ----------------------------------
+
+#define IMU_ENABLED
+
+#define IMU_I2C_SPEED 400 * 1000
+#define IMU_WIRE_PORT Wire
+// #define IMU_I2C_ADDRESS 0x68
+#define IMU_AD0_VAL 0
+// #define IMU_I2C_ADDRESS_MAG 0x0C
+#define IMU_FRAME_ID "imu_base_link"
+#define IMU_PUBLISH_RATE 30  // Hz
+#define IMU_MAX_RETRY_COUNT 5
+#define IMU_RETRY_DELAY_MS 1000
+#define IMU_MAX_COVARIANCE 0.1
+#define IMU_MIN_COVARIANCE 0.1
+#define IMU_TOPIC_NAME "~/imu/data"
+#define IMU_BIAS_SAVE_INTERVAL_MS 2 * 60 * 1000 // Save biases after 2 minutes
+// #define IMU_BIAS_SAVE_INTERVAL_MS 20 * 1000 // Save biases after 2 minutes
+
+// TODO: Declination?
+
+// #define IMU_ENABLE_EEPROM
+
+// END IMU
+
 
 // ----------------------------------
 // START LED RING
@@ -114,185 +139,6 @@ static const int CENTI_METERS = 100.0;
 // ----------------------------------
 
 // ----------------------------------
-// START MOTORS
-// ----------------------------------
-
-#define CMD_VEL_BUFFER 5
-
-// Time since last cmd_vel message before stopping the robot
-#define CMD_VEL_TIMEOUT 10 * NANOSECONDS
-
-// Time since last cmd_vel message before turning off the motors completely
-#define CMD_VEL_TIMEOUT_DISABLE 60 * NANOSECONDS
-
-// Time to wait for motors and stay at neutral speed after enabling (3s)
-#define MOTOR_NEUTRAL_TIME 2 * NANOSECONDS
-
-// Limit acceleration for each motor
-// Meters per second squared
-#define MAX_ACCELERATION_LINEAR .75
-// #define MAX_ACCELERATION_LINEAR .1
-
-// Radians per second squared
-// #define MAX_ACCELERATION_ROTATION .2
-
-#define MOTOR_COUNT 4
-
-#define PIN_MOTOR_FRONT_LEFT 9
-#define PIN_MOTOR_BACK_LEFT 8
-#define PIN_MOTOR_FRONT_RIGHT 7
-#define PIN_MOTOR_BACK_RIGHT 6
-
-#define IDX_MOTOR_FRONT_LEFT 0
-#define IDX_MOTOR_BACK_LEFT 1
-#define IDX_MOTOR_FRONT_RIGHT 2
-#define IDX_MOTOR_BACK_RIGHT 3
-
-#define MOTOR_JOIN_FRONT_LEFT "wheel_front_left_joint"
-#define MOTOR_JOIN_BACK_LEFT "wheel_back_left_joint"
-#define MOTOR_JOIN_FRONT_RIGHT "wheel_front_right_joint"
-#define MOTOR_JOIN_BACK_RIGHT "wheel_back_right_joint"
-
-#define MOTOR_LEFT 0
-#define MOTOR_RIGHT 1
-
-// Motors are stopped in this range
-// Duty cycle deadzone 762 - 726 = 36 / 2 = 18
-// Middle is (762 + 726) / 2 = 744
-// Dead in either direction this amount
-#define MOTOR_DUTY_CYCLE_DEADZONE 8
-
-// 1000 us
-#define MOTOR_DUTY_CYCLE_STOP      744
-
-// 1000 us - 2000 us -> 490 - 980 duty cycle
-// 980 - 490 = 490
-#define MOTOR_DUTY_CYCLE_RANGE    490
-
-// 1000 us
-#define MOTOR_DUTY_CYCLE_MIN      MOTOR_DUTY_CYCLE_STOP - (MOTOR_DUTY_CYCLE_RANGE / 2)
-// 2000 us
-#define MOTOR_DUTY_CYCLE_MAX      MOTOR_DUTY_CYCLE_STOP + (MOTOR_DUTY_CYCLE_RANGE / 2)
-
-// How many pulses are output for one revolution of the motor
-  // 69579 / 50 = 1,391.58
-#define MOTOR_PULSES_PER_REV      1392
-
-// TODO: There is some backlash in the motor, so we need to add some deadband
-
-// Size of the wheels
-// 89 * 3.14159 = 280.5 mm per revolution -> .281 meters/rev
-#define WHEEL_DIAMETER_MM         89
-
-// Top speed in meters per second that we want to acheive (artificial limit)
-#define MOTOR_LIMIT_SPEED_MS      1.0
-
-// Top speed in pulses per second that we want to acheive (artificial limit)
-#define MOTOR_LIMIT_SPEED_PPS     (MOTOR_LIMIT_SPEED_MS / METERS_PER_REV * MOTOR_PULSES_PER_REV)
-
-
-// Measure the pulses per second at a given duty cycle and to figure out what the range is for setting the duty cycle
-// Subscribe to the /deepdrive_micro/wheel_speed/out.position[1] and /deepdrive_micro/wheel_speed/out.velocity[1] topics
-// #define MOTOR_DUTY_CYCLE_REFERENCE_PWM     744
-#define MOTOR_DUTY_CYCLE_REFERENCE_PWM      786
-
-#define MOTOR_REF_SPEED_FRONT_LEFT          2820
-#define MOTOR_REF_SPEED_BACK_LEFT           3270
-#define MOTOR_REF_SPEED_FRONT_RIGHT         3120
-#define MOTOR_REF_SPEED_BACK_RIGHT          2730
-
-
-// duty cycle = 778
-// target speed = .1 m/s
-// measured speed = .43 m/s  or 2000 pulses/s
-
-
-// Max speed that the motor supports (hard limit for mapping speed to pulses)
-#define MOTOR_MAX_SPEED_MS        2.0
-#define MM_PER_REV                (M_PI * WHEEL_DIAMETER_MM)
-#define METERS_PER_REV            (MM_PER_REV / MILLI_METERS)
-
-
-// Set max speed to about 1.124 m/s (4 revs per second)
-// #define MOTOR_MAX_SPEED_PPS       4 * MOTOR_PULSES_PER_REV
-// Set max speed to about .281 m/s (1 revs per second)
-// #define MOTOR_MAX_SPEED_PPS       MOTOR_PULSES_PER_REV
-#define MOTOR_MAX_SPEED_PPS       (MOTOR_MAX_SPEED_MS / METERS_PER_REV * MOTOR_PULSES_PER_REV)
-
-// Don't accept values this high since they are impossible
-#define MOTOR_MAX_SPEED_FILTER    (5 * MOTOR_PULSES_PER_REV)
-
-// How far apart the wheels are in mm from left to right innermost edge
-#define WHEEL_BASE_MM             240
-
-// Multiplier to adjust the wheel base to compensate for slippage
-// #define WHEEL_BASE_COEFFICIENT    1.0
-#define WHEEL_BASE_COEFFICIENT    2.5
-
-// END MOTORS
-// ----------------------------------
-
-
-// ----------------------------------
-// START WHEEL ENCODER PULSE COUNTER
-// ----------------------------------
-
-// If we have noisy encoders, we might get pulses when we aren't actually moving. This will ignore them if speed = 0;
-// #define WHEEL_ENCODER_IGNORE_STOPPED
-#define PIN_ENCODER_FRONT_LEFT 13
-#define PIN_ENCODER_BACK_LEFT 12
-#define PIN_ENCODER_FRONT_RIGHT 11
-#define PIN_ENCODER_BACK_RIGHT 10
-
-#define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL
-// #define GPIO_IRQ_TYPES GPIO_IRQ_EDGE_RISE
-
-// Pulses less than this will be ignore as noise
-#define ENCODER_NOISE_THRESHOLD 3
-
-// How many samples to keep and average out
-// Might affect PID_KP macro below
-#define ENCODER_PULSE_BUFFER 20
-
-// END WHEEL ENCODER PULSE COUNTER
-// ----------------------------------
-
-
-// ----------------------------------
-// START PID CONTROLLER
-// ----------------------------------
-
-// // Proportional
-// #define PID_KP 0.95  // 1.9 starts to oscillate at .1m/s
-
-// // Integral
-// #define PID_KI 0.1  // 0.25 starts to oscillate
-
-// // Derivative
-// #define PID_KD 0.2
-
-// Proportional
-// #define PID_KP .001
-#define PID_KP 0.75
-// #define PID_KP 0.019
-
-// Integral
-// #define PID_KI 0
-#define PID_KI 0.5
-// #define PID_KI 0.0015
-// #define PID_KI 0.002
-
-// Derivative
-#define PID_KD 0
-// #define PID_KD 0.05
-// #define PID_KD 0.000
-
-
-
-// END PID CONTROLLER
-// ----------------------------------
-
-// ----------------------------------
 // START BATTERY VOLTAGE
 // ----------------------------------
 
@@ -309,25 +155,11 @@ static const int CENTI_METERS = 100.0;
 #define BATTERY_VOLTAGE_CONVERSION 11.07f / 1.8839550018310547f
 #define BATTERY_CELLS 4
 #define BATTERY_CAPACITY 5200  // mAh
+#define BATTERY_FRAME "base_link"
 
 // END BATTERY VOLTAGE
 // ----------------------------------
 
-// ----------------------------------
-// START IMU
-// ----------------------------------
-
-#define IMU_PUBLISH
-#define IMU_ENABLED
-#define IMU_I2C_SPEED 400 * 1000
-#define IMU_I2C_SDA 4
-#define IMU_I2C_SCL 5
-#define IMU_I2C { i2c0_hw, false }
-#define IMU_ADDRESS 0x68
-#define IMU_ADDRESS_MAG 0x0C
-
-#define IMU_FRAME "imu_link"
-#define BATTERY_FRAME "base_link"
 
 // END IMU
 // ----------------------------------
@@ -384,15 +216,20 @@ static const int CENTI_METERS = 100.0;
 #define SONAR_MAX_DISTANCE 2.0f  // meters
 #define SONAR_MIN_DISTANCE 0.02f  // meters
 #define SONAR_FOV 15  // degrees
-#define SONAR_PUBLISH_RATE 10 // Hz
+#define SONAR_PUBLISH_RATE 10 // 10 // Hz
+#define SONAR_PING_RATE 10 // Hz
 #define SONAR_FRAME_LEFT "sonar_left_link" // Need to add separate frame
 #define SONAR_FRAME_RIGHT "sonar_right_link" // Need to add separate frame
-#define SONAR_TOPIC_LEFT "~/sonar/left"
-#define SONAR_TOPIC_RIGHT "~/sonar/right"
+#define SONAR_TOPIC_RANGE_LEFT "~/sonar/left/range"
+#define SONAR_TOPIC_RANGE_RIGHT "~/sonar/right/range"
+#define SONAR_TOPIC_SCAN_LEFT "~/sonar/left/scan"
+#define SONAR_TOPIC_SCAN_RIGHT "~/sonar/right/scan"
 #define SONAR_LASER_RAYS 30
 
 // PIO FIFOs are only four words (of 32 bits)
 #define SONAR_SAMPLES 4
+
+// ----------------------------------
 
 
 #endif  // CONFIG_H

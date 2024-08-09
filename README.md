@@ -1,6 +1,8 @@
 # deepdrive_micro
 
-ros micro interface to raspberry pi pico
+Build with [PlatformIO](https://docs.platformio.org/en/latest/integration/ide/vscode.html#ide-vscode) and [arduino-pico](https://arduino-pico.readthedocs.io/en/latest) in VScode.
+
+See [hardware.md](./hardware.md) for more details.
 
 Interfaces:
 - LEDs
@@ -20,7 +22,7 @@ Error: Failed to connect multidrop rp2040.dap0
 ```
 
 
-### Option1: Setup OpenOCD / Raspbery Pi Debug Probe
+### Option1: Setup OpenOCD / Raspbery Pi Debug Probe (cmsis-dap)
 
 Buy a debug probe from Raspberry Pi foundation or flash another pico with the firmware to act like one.
 
@@ -113,6 +115,11 @@ Verify
 $ ls -lah /dev/deepdrive_micro
 lrwxrwxrwx 1 root root 15 Jul 29 07:37 /dev/deepdrive_micro -> bus/usb/001/024
 ```
+
+#### Notes
+
+Serial1 must be used for any output to the debugger
+
 
 
 ### Option 2: Setup picotool

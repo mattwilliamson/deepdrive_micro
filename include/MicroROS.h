@@ -13,6 +13,9 @@
 #include <rclc/rclc.h>
 #include <std_msgs/msg/float32.h>
 #include <std_msgs/msg/float64.h>
+#include <rmw_microros/rmw_microros.h>
+#include <micro_ros_utilities/string_utilities.h>
+#include <rosidl_runtime_c/primitives_sequence_functions.h>
 
 #include "RosoutLogger.hpp"
 #include "config.h"
@@ -41,6 +44,7 @@ void error_loop();
   {                                                                            \
     rcl_ret_t temp_rc = fn;                                                    \
     if ((temp_rc != RCL_RET_OK)) {                                             \
+      Serial.println("RCSOFTCHECK error code: " + String(temp_rc));            \
     }                                                                          \
   }
 // #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc !=
@@ -51,6 +55,6 @@ void error_loop();
 
 void setupMicroROS();
 void vTaskPing(void *pvParameters);
-void vTaskMicroROS(void *pvParameters);
+// void vTaskMicroROS(void *pvParameters);
 
 #endif // MICRO_ROS_HPP

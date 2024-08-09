@@ -1,5 +1,4 @@
 #include "MicroROS.h"
-#include "PubSonar.hpp"
 
 rclc_executor_t executor;
 rclc_support_t support;
@@ -23,7 +22,7 @@ void error_loop();
   {                                                                            \
     rcl_ret_t temp_rc = fn;                                                    \
     if ((temp_rc != RCL_RET_OK)) {                                             \
-      Serial.println("error code: " + String(temp_rc));                        \
+      SerialDebug.println("error code: " + String(temp_rc));                       \
       error_loop();                                                            \
     }                                                                          \
   }
@@ -49,19 +48,42 @@ void error_loop() {
 }
 
 void setupMicroROS() {
+  SerialDebug.println("setupMicroROS waiting for serial");
+
   while (!Serial); // Wait for serial port to connect (needed for some boards)
 
     // xTaskCreate(vTaskBuzzer, "BuzzerTask", 10000, NULL, 1, NULL);
+  SerialDebug.println("setupMicroROS setting transport");
 
   set_microros_serial_transports(Serial);
   delay(1000);
+
+  // Initialize micro ros
+
+  SerialDebug.println("setupMicroROS alloc memory");
+
+  // Alloc memory
+  allocator = rcl_get_default_allocator();
+  SerialDebug.println("setupMicroROS support init");
+  // RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
+  rcl_ret_t ret = rclc_support_init(&support, 0, NULL, &allocator);
+  SerialDebug.println("error code: " + String(ret));
+
+  SerialDebug.println("setupMicroROS init node");
+  RCCHECK(rclc_node_init_default(&node, "deepdrive_micro", "", &support));
+
+  // Executor setup
+  SerialDebug.println("setupMicroROS executor init");
+  RCCHECK(rclc_executor_init(&executor, &support.context, 16, &allocator));
+
+  SerialDebug.println("setupMicroROS done");
 }
 
 void vTaskPing(void *pvParameters) {
-  last_message_time = 0;
-  ping_failures = 0;
+  // last_message_time = 0;
+  // ping_failures = 0;
 
-  while (true) {
+  // while (true) {
     // If we don't get messages and the agent is not available, stop the motors
     uint32_t elapsed = millis() - last_message_time;
 
@@ -72,6 +94,7 @@ void vTaskPing(void *pvParameters) {
 
       // Serial.println("Error: No message received for " + String(elapsed)
       // +"ms"); Serial.println("ping_failures: " + String(ping_failures));
+      SerialDebug.println("vTaskPing pinging agent");
 
       if (rmw_uros_ping_agent(UROS_TIMEOUT_PERIODIC, 1) != RMW_RET_OK) {
         // Serial.println("ping failed");
@@ -103,39 +126,31 @@ void vTaskPing(void *pvParameters) {
       }
     }
 
-    // vTaskDelay(xDelay);
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
+  //   // vTaskDelay(xDelay);
+  //   vTaskDelay(pdMS_TO_TICKS(10));
+  // }
 }
 
-void vTaskMicroROS(void *pvParameters) {
-//   const TickType_t xDelay = MOTOR_LOOP_PERIOD * portTICK_PERIOD_MS / 1000;
+// void vTaskMicroROS(void *pvParameters) {
+//   SerialDebug.println("vTaskMicroROS starting");
+// //   const TickType_t xDelay = MOTOR_LOOP_PERIOD * portTICK_PERIOD_MS / 1000;
 
-  // Serial.println("Wait for ping thread to succeed");
+//   // Serial.println("Wait for ping thread to succeed");
 
-  // Serial.println("initializing micro ros inside vTaskMicroROS");
+//   // Serial.println("initializing micro ros inside vTaskMicroROS");
 
-  // Initialize micro ros
 
-  // Alloc memory
-  allocator = rcl_get_default_allocator();
-  RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
-  RCCHECK(rclc_node_init_default(&node, "deepdrive_micro", "", &support));
+//   // Wait for ping task to succeed
+//   while (!connected) {
+//     SerialDebug.println("vTaskMicroROS waiting for connection");
+//     vTaskDelay(pdMS_TO_TICKS(100));
+//   }
 
-  // Executor setup
-  RCCHECK(rclc_executor_init(&executor, &support.context, 4, &allocator));
-
-  // Wait for ping task to succeed
-  while (!connected) {
-    // Serial.println("waiting for connection");
-    vTaskDelay(pdMS_TO_TICKS(100));
-  }
-
-  while (true) {
-    // RCCHECK(rclc_executor_spin_some(&executor));
-    // TODO: Should this go smaller? Will it block the kernel?
-    rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
-    // vTaskDelay(MOTOR_LOOP_PERIOD * portTICK_PERIOD_MS / 1000);
-    vTaskDelay(pdMS_TO_TICKS(5));
-  }
-}
+//   while (true) {
+//     // RCCHECK(rclc_executor_spin_some(&executor));
+//     // TODO: Should this go smaller? Will it block the kernel?
+//     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
+//     // vTaskDelay(MOTOR_LOOP_PERIOD * portTICK_PERIOD_MS / 1000);
+//     vTaskDelay(pdMS_TO_TICKS(1));
+//   }
+// }

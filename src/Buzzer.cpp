@@ -49,7 +49,12 @@ void playBuzzer() {
   }
 }
 
-// void vTaskBuzzer(void *pvParameters) {
-    // playBuzzer();
+void vTaskBuzzer(void *pvParameters) {
+  setupBuzzer();
+
+  while(true) {
+    playBuzzer();
     // vTaskDelay(pdMS_TO_TICKS(1) / 1000);
-// }
+    yield();
+  }
+}
