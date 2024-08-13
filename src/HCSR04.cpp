@@ -52,7 +52,7 @@ void HCSR04::echoISR() {
     } else {
         endTime = micros();
         unsigned long duration = endTime - startTime;
-        float distance = duration * TIME_TO_DISTANCE_FACTOR;  // Convert time to distance in meters
+        distance = duration * TIME_TO_DISTANCE_FACTOR;  // Convert time to distance in meters
 
         addToBuffer(distance);
         measuring = false;
@@ -115,5 +115,7 @@ float HCSR04::calculateAverage() {
  * @return The average distance in meters.
  */
 float HCSR04::getDistance() {
-    return calculateAverage();
+    // Use just one measurement for now
+    return distance;
+    // return calculateAverage();
 }

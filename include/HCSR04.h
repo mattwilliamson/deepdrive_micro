@@ -150,6 +150,7 @@ private:
     float *distanceBuffer;            ///< Pointer to the buffer storing recent distance measurements.
     uint8_t bufferIndex;              ///< Index to the current position in the buffer.
     bool bufferFull;                  ///< Flag indicating if the buffer is full.
+    float distance;                   ///< The calculated distance in meters.
 };
 
 #endif

@@ -31,6 +31,7 @@ public:
      * @param sensor A reference to an HCSR04 object to retrieve sensor data.
      * @param publish_rate The rate at which to publish the data in Hz.
      * @param measurement_rate The rate at which to trigger measurements in Hz.
+     * @param angle_offset The offset angle for the sensor in radians.
      * @param support A pointer to the rclc_support_t structure for ROS2 support.
      * @param node A pointer to the rcl_node_t structure for ROS2 node.
      * @param executor A pointer to the rclc_executor_t structure for ROS2 executor.
@@ -42,6 +43,7 @@ public:
         HCSR04& sensor,
         float publish_rate,
         float measurement_rate,
+        float angle_offset,
         rclc_support_t* support,
         rcl_node_t* node,
         rclc_executor_t* executor
@@ -68,6 +70,7 @@ private:
     HCSR04& sensor;
     float publish_rate;
     float measurement_rate;
+    float angle_offset;
     unsigned long last_publish_time;
     unsigned long last_measurement_time;
     rclc_support_t* support;

@@ -12,6 +12,8 @@ uint32_t last_ping_success_time = 0;
 uint32_t ping_failures = 0;
 bool connected = false;
 
+bool micro_ros_started = false;
+
 
 void setupMicroROS();
 
@@ -47,7 +49,8 @@ void error_loop() {
   }
 }
 
-void setupMicroROS() {
+void vTaskMicroROS(void *pvParameters) {
+  
   SerialDebug.println("setupMicroROS waiting for serial");
 
   while (!Serial); // Wait for serial port to connect (needed for some boards)
@@ -76,7 +79,15 @@ void setupMicroROS() {
   SerialDebug.println("setupMicroROS executor init");
   RCCHECK(rclc_executor_init(&executor, &support.context, 16, &allocator));
 
+  logger = new RosoutLogger(&node, &support);
+
   SerialDebug.println("setupMicroROS done");
+  micro_ros_started = true;
+
+  while(true) {
+    rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1));
+    yield();
+  }
 }
 
 void vTaskPing(void *pvParameters) {

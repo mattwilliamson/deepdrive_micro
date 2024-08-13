@@ -17,7 +17,7 @@
 #include <micro_ros_utilities/string_utilities.h>
 #include <rosidl_runtime_c/primitives_sequence_functions.h>
 
-#include "RosoutLogger.hpp"
+#include "RosoutLogger.h"
 #include "config.h"
 
 extern rclc_executor_t executor;
@@ -26,8 +26,10 @@ extern rcl_allocator_t allocator;
 extern rcl_node_t node;
 
 extern RosoutLogger *logger;
+extern bool micro_ros_started;
 
-void setupMicroROS();
+// void setupMicroROS();
+void vTaskMicroROS(void *pvParameters);
 
 // Error handle loop
 void error_loop();

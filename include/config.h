@@ -106,7 +106,7 @@ static const int CENTI_METERS = 100.0;
 #endif
 
 #define LED_RING_IS_RGBW false
-#define LED_RING_NUM_PIXELS 12
+#define LED_RING_NUM_PIXELS 14
 
 #define LED_RING_PIO pio0
 
@@ -206,28 +206,31 @@ static const int CENTI_METERS = 100.0;
 
 #define SONAR_SENSORS 2
 
-#define SONAR_TRIGGER_PIN_RIGHT     21
-#define SONAR_ECHO_PIN_RIGHT        20
-#define SONAR_TRIGGER_PIN_LEFT      19
-#define SONAR_ECHO_PIN_LEFT         18
+#define SONAR_TRIGGER_PIN_RIGHT     19
+#define SONAR_ECHO_PIN_RIGHT        18
+#define SONAR_TRIGGER_PIN_LEFT      21
+#define SONAR_ECHO_PIN_LEFT         20
 
 // Since a small object will cause a bounce, only use closes ranged objects for navigation
 // #define SONAR_MAX_DISTANCE 4.0f  // meters
 #define SONAR_MAX_DISTANCE 2.0f  // meters
 #define SONAR_MIN_DISTANCE 0.02f  // meters
-#define SONAR_FOV 15  // degrees
+#define SONAR_FOV 10  // degrees
 #define SONAR_PUBLISH_RATE 10 // 10 // Hz
 #define SONAR_PING_RATE 10 // Hz
-#define SONAR_FRAME_LEFT "sonar_left_link" // Need to add separate frame
-#define SONAR_FRAME_RIGHT "sonar_right_link" // Need to add separate frame
+#define SONAR_FRAME_LEFT "sonar_front_left_link" // Need to add separate frame
+#define SONAR_FRAME_RIGHT "sonar_front_right_link" // Need to add separate frame
 #define SONAR_TOPIC_RANGE_LEFT "~/sonar/left/range"
 #define SONAR_TOPIC_RANGE_RIGHT "~/sonar/right/range"
 #define SONAR_TOPIC_SCAN_LEFT "~/sonar/left/scan"
 #define SONAR_TOPIC_SCAN_RIGHT "~/sonar/right/scan"
-#define SONAR_LASER_RAYS 30
+#define SONAR_LASER_RAYS 10
+#define SONAR_LASER_ANGLE_OFFSET 5.0
 
 // PIO FIFOs are only four words (of 32 bits)
 #define SONAR_SAMPLES 4
+
+#define SONAR_BUMPER_TRIGGER_RANGE 
 
 // ----------------------------------
 

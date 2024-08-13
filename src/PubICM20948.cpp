@@ -59,14 +59,16 @@ void PubICM20948::calibrate() {
  * @brief Initializes the sensor and the ROS2 publishers.
  */
 void PubICM20948::init() {
+  SerialDebug.println("IMU initialize I2C");
   // Initialize the sensor
   IMU_WIRE_PORT.begin();
   IMU_WIRE_PORT.setClock(IMU_I2C_SPEED);
+  SerialDebug.println("IMU sensor.begin");
   sensor.begin(IMU_WIRE_PORT, IMU_AD0_VAL);
 
   int retry_count = 0;
   while (sensor.status != ICM_20948_Stat_Ok && retry_count < IMU_MAX_RETRY_COUNT) {
-    SerialDebug.println("IMU initialization failed! Retrying...");
+    SerialDebug.println("IMU initialization failed! Retrying..." + String(retry_count + 1) + "/" + String(IMU_MAX_RETRY_COUNT));
     SerialDebug.println(sensor.statusString());
     delay(IMU_RETRY_DELAY_MS);
     sensor.begin(IMU_WIRE_PORT, IMU_AD0_VAL);
@@ -81,6 +83,7 @@ void PubICM20948::init() {
 
   // Load biases from EEPROM if available
   if (loadBiasesFromEEPROM()) {
+    SerialDebug.println("IMU load biases");
     // Apply the biases to the sensor
     sensor.setBiasGyroX(biases.biasGyroX);
     sensor.setBiasGyroY(biases.biasGyroY);
@@ -94,6 +97,7 @@ void PubICM20948::init() {
   bool success;
 
   for (int i = 0; i < IMU_MAX_RETRY_COUNT; i++) {
+    SerialDebug.println("IMU enabling dmp");
     success = true;
     success &= (sensor.initializeDMP() == ICM_20948_Stat_Ok);
 

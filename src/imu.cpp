@@ -21,7 +21,8 @@ void imuTask(void* pvParameters) {
 
     while (true) {
         imuPublisher->update();
-        vTaskDelay(pdMS_TO_TICKS(1));
+        // vTaskDelay(pdMS_TO_TICKS(1));
+        delay(1);
     }
 }
 

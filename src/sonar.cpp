@@ -36,6 +36,7 @@ void initSonar() {
         sonarFrontRight, 
         SONAR_PUBLISH_RATE, 
         SONAR_PING_RATE, 
+        -SONAR_LASER_ANGLE_OFFSET,
         &support, 
         &node, 
         &executor
@@ -49,6 +50,7 @@ void initSonar() {
         sonarFrontLeft, 
         SONAR_PUBLISH_RATE, 
         SONAR_PING_RATE, 
+        SONAR_LASER_ANGLE_OFFSET,
         &support, 
         &node, 
         &executor
@@ -65,6 +67,7 @@ void updateSonar() {
 void sonarTask(void* pvParameters) {
     SerialDebug.println("Sonar task started");
     initSonar();
+    delay(1);
     SerialDebug.println("Sonar task inited");
 
     while (true) {
